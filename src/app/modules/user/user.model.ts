@@ -43,12 +43,13 @@ const userSchema = new Schema<IUser>(
     },
     phone: {
       type: String,
-      required: [true, "Phone number is required"],
       unique: true,
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
+      required: function () {
+        return !(this as IUser).authProviders?.length;
+      },
       select: false,
     },
     role: {

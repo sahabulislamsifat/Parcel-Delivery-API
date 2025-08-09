@@ -6,22 +6,25 @@ import { verifyToken } from "../utils/jwt";
 
 export const checkAuth =
   (...authRoles: string[]) =>
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      let authorizationHeader = req.headers.authorization;
+      let token: string | undefined;
 
-      if (!authorizationHeader) {
-        throw new AppError(403, "No token received");
+      // First check Authorization header
+      if (req.headers.authorization) {
+        const authHeader = req.headers.authorization;
+        token = authHeader.startsWith("Bearer ")
+          ? authHeader.slice(7).trim()
+          : authHeader.trim();
       }
 
-      if (authorizationHeader.startsWith("Bearer ")) {
-        authorizationHeader = authorizationHeader.split(" ")[1];
+      // Fallback: check cookies
+      if (!token && req.cookies?.accessToken) {
+        token = req.cookies.accessToken;
       }
-
-      const token = authorizationHeader.trim();
 
       if (!token) {
-        throw new AppError(403, "Invalid token format");
+        throw new AppError(403, "No authentication token provided");
       }
 
       const verifiedToken = verifyToken(
@@ -33,15 +36,18 @@ export const checkAuth =
         throw new AppError(403, "Invalid or expired token");
       }
 
-      // Role check
+      if (!verifiedToken.role) {
+        throw new AppError(403, "Invalid token payload: missing role");
+      }
+
       if (authRoles.length && !authRoles.includes(verifiedToken.role)) {
-        throw new AppError(403, "You are not permitted to view this route!!!");
+        throw new AppError(403, "You are not permitted to view this route");
       }
 
       req.user = verifiedToken;
       next();
     } catch (error) {
-      console.error("Error From JWT:", error);
+      console.error("Auth Middleware Error:", error);
       next(error);
     }
   };

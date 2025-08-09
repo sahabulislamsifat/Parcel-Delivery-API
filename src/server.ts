@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 import express from "express";
 import { createServer } from "http";
-import mongoose from "mongoose";
 import app from "./app";
 import { envVariables } from "./app/config/env";
+import mongoose from "mongoose";
 
 const server = createServer(app);
 
@@ -24,7 +24,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+(async () => {
+  await startServer();
+})();
 
 //* Unhandled Rejection
 process.on("unhandledRejection", (err) => {
@@ -37,7 +39,6 @@ process.on("unhandledRejection", (err) => {
     process.exit(1);
   }
 });
-// Promise.reject(new Error("I forget to catch this Promise!"));
 
 //* Uncaught Exception Handling
 process.on("uncaughtException", (err) => {
@@ -50,7 +51,6 @@ process.on("uncaughtException", (err) => {
     process.exit(1);
   }
 });
-// throw new Error("I forget to handle this local error!");
 
 //* Signal termination sigterm
 process.on("SIGTERM", () => {

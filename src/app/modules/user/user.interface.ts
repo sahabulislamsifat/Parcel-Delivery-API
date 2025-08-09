@@ -1,20 +1,31 @@
 export enum Role {
-  SUPER_ADMIN = "SUPER_ADMIN",
   ADMIN = "ADMIN",
   SENDER = "SENDER",
   RECEIVER = "RECEIVER",
 }
 
-export interface IauthProvider {
-  provider: "google" | "credentials";
+export enum AuthProviderType {
+  GOOGLE = "google",
+  CREDENTIALS = "credentials",
+}
+
+export interface IAuthProvider {
+  provider: AuthProviderType;
   providerId: string;
   email?: string;
 }
 
-export enum IsActive {
+export enum UserStatus {
   ACTIVE = "ACTIVE",
   INACTIVE = "INACTIVE",
   BLOCKED = "BLOCKED",
+}
+
+export interface IAddress {
+  street?: string;
+  city?: string;
+  district?: string;
+  postalCode?: string;
 }
 
 export interface IUser {
@@ -22,16 +33,11 @@ export interface IUser {
   name: string;
   email: string;
   phone: string;
-  password: string;
+  password?: string;
   role: Role;
-  authProvider?: IauthProvider[];
-  status?: IsActive;
-  address?: {
-    street?: string;
-    city?: string;
-    district?: string;
-    postalCode?: string;
-  };
+  authProviders?: IAuthProvider[];
+  status?: UserStatus;
+  address?: IAddress;
   createdAt?: Date;
   updatedAt?: Date;
 }

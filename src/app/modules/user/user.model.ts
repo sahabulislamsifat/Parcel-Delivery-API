@@ -1,26 +1,37 @@
 import { model, Schema } from "mongoose";
-import { IsActive, IUser, Role } from "./user.interface";
+import { IUser, Role, UserStatus, AuthProviderType } from "./user.interface";
 
+// subSchema for address
 const addressSchema = new Schema(
   {
-    street: { type: String },
-    city: { type: String },
-    district: { type: String },
-    postalCode: { type: String },
+    street: { type: String, trim: true },
+    city: { type: String, trim: true },
+    district: { type: String, trim: true },
+    postalCode: { type: String, trim: true },
   },
   { _id: false }
 );
 
-const authProviderSchema = new Schema({
-  provider: { type: String, required: true },
-  providerId: { type: String, required: true },
-});
+// subSchema for authProviders
+const authProviderSchema = new Schema(
+  {
+    provider: {
+      type: String,
+      enum: Object.values(AuthProviderType),
+      required: true,
+    },
+    providerId: { type: String, required: true },
+    email: { type: String },
+  },
+  { _id: false }
+);
 
+// Main User Schema
 const userSchema = new Schema<IUser>(
   {
     name: {
       type: String,
-      required: [true, "User name is required"],
+      required: [true, "Name is required"],
       trim: true,
     },
     email: {
@@ -43,24 +54,23 @@ const userSchema = new Schema<IUser>(
     role: {
       type: String,
       enum: Object.values(Role),
-      default: Role.SENDER, // default user
+      default: Role.SENDER,
     },
     status: {
       type: String,
-      enum: Object.values(IsActive),
-      default: IsActive.ACTIVE,
+      enum: Object.values(UserStatus),
+      default: UserStatus.ACTIVE,
     },
     address: addressSchema,
-    authProvider: [authProviderSchema],
+    authProviders: {
+      type: [authProviderSchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
-    toJSON: {
-      virtuals: true,
-    },
-    toObject: {
-      virtuals: true,
-    },
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 

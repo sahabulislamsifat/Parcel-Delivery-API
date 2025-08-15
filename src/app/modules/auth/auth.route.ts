@@ -17,7 +17,7 @@ router.post(
 
 // Google OAuth
 router.get("/google", (req, res, next) => {
-  const redirect = req.query.redirect || "/";
+  const redirect = req.query.redirect || "";
   passport.authenticate("google", {
     scope: ["profile", "email"],
     state: redirect as string,
@@ -30,4 +30,4 @@ router.get(
   authControllers.googleCallbackController
 );
 
-export const authRoutes = router;
+export const AuthRoutes = router;

@@ -1,18 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextFunction, Request, Response } from "express";
+import { JwtPayload } from "jsonwebtoken";
+import { IUser, Role } from "../user/user.interface";
 import { catchAsync } from "../../utils/createAsync";
+import { NextFunction, Request, Response } from "express";
 import passport from "passport";
 import AppError from "../../errorHelper/AppError";
+import httpStatus from "../../utils/httpStatus";
 import { createUserTokens } from "../../utils/userToken";
 import { setAuthCookie } from "../../utils/setCookies";
 import { sendResponse } from "../../utils/sendResponse";
-import httpStatus from "../../utils/httpStatus";
-import { JwtPayload } from "jsonwebtoken";
-import { envVariables } from "../../config/env";
 import { authService } from "./auth.service";
-import { IUser, Role } from "../user/user.interface";
+import { envVariables } from "../../config/env";
 
-// Custom decoded token type
 interface DecodedUserToken extends JwtPayload {
   userId: string;
   email: string;
@@ -63,10 +62,7 @@ const getNewAccessToken = catchAsync(async (req: Request, res: Response) => {
 
   const { accessToken } = await authService.getNewAccessToken(refreshToken);
 
-  setAuthCookie(res, {
-    refreshToken,
-    accessToken,
-  });
+  setAuthCookie(res, { refreshToken, accessToken });
 
   sendResponse(res, {
     success: true,
@@ -77,13 +73,16 @@ const getNewAccessToken = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logout = catchAsync(async (_req: Request, res: Response) => {
+  const isProd = envVariables.NODE_ENV === "production";
   res.clearCookie("accessToken", {
     httpOnly: true,
-    secure: envVariables.NODE_ENV === "production",
+    secure: isProd,
+    sameSite: "strict",
   });
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: envVariables.NODE_ENV === "production",
+    secure: isProd,
+    sameSite: "strict",
   });
 
   sendResponse(res, {

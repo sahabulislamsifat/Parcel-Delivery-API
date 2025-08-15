@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import AppError from "../errorHelper/AppError";
 import { envVariables } from "../config/env";
-import { JwtPayload } from "jsonwebtoken";
 import { verifyToken } from "../utils/jwt";
+import { AuthPayload } from "../interfaces";
 
 export const checkAuth =
   (...authRoles: string[]) =>
@@ -30,7 +30,7 @@ export const checkAuth =
       const verifiedToken = verifyToken(
         token,
         envVariables.JWT_ACCESS_SECRET
-      ) as JwtPayload | null;
+      ) as AuthPayload | null;
 
       if (!verifiedToken) {
         throw new AppError(403, "Invalid or expired token");

@@ -34,12 +34,12 @@ const createParcel = async (
 };
 
 const getAllParcels = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const parcels = await ParcelService.getAllParcels();
+    const parcels = await ParcelService.getAllParcels(req.query);
 
     sendResponse(res, {
       success: true,

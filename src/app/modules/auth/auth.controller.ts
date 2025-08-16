@@ -95,7 +95,7 @@ const logout = catchAsync(async (_req: Request, res: Response) => {
 
 const resetPassword = catchAsync(async (req: Request, res: Response) => {
   const { oldPassword, newPassword } = req.body;
-  const decodedToken = req.user as DecodedUserToken;
+  const decodedToken = req.user as unknown as DecodedUserToken;
 
   await authService.resetPassword(oldPassword, newPassword, decodedToken);
 

@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { DeliveryChargeService } from "../deliveryCharge/deliveryCharge.service";
 import { IParcel, ParcelStatus } from "./parcel.interface";
 import { Parcel } from "./parcel.model";
+import { QueryBuilder } from "../../utils/QueryBuilder";
 import AppError from "../../errorHelper/AppError";
 import httpStatus from "../../utils/httpStatus";
 
@@ -12,15 +13,15 @@ const generateTrackingId = (): string => {
   return `TRK-${date}-${random}`;
 };
 
-// ✅ Allowed status transitions
+// Allowed status transitions
 const VALID_STATUS_TRANSITIONS: Record<ParcelStatus, ParcelStatus[]> = {
   [ParcelStatus.REQUESTED]: [ParcelStatus.APPROVED, ParcelStatus.CANCELLED],
   [ParcelStatus.APPROVED]: [ParcelStatus.DISPATCHED, ParcelStatus.CANCELLED],
   [ParcelStatus.DISPATCHED]: [ParcelStatus.IN_TRANSIT, ParcelStatus.CANCELLED],
   [ParcelStatus.IN_TRANSIT]: [ParcelStatus.DELIVERED, ParcelStatus.RETURNED],
-  [ParcelStatus.DELIVERED]: [], // Final
-  [ParcelStatus.CANCELLED]: [], // Final
-  [ParcelStatus.RETURNED]: [], // Final
+  [ParcelStatus.DELIVERED]: [],
+  [ParcelStatus.CANCELLED]: [],
+  [ParcelStatus.RETURNED]: [],
 };
 
 const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
@@ -47,8 +48,19 @@ const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
   return Parcel.create(payload);
 };
 
-const getAllParcels = async (): Promise<IParcel[]> => {
-  return Parcel.find().populate("sender receiver");
+const getAllParcels = async (
+  query: Record<string, unknown>
+): Promise<IParcel[]> => {
+  const parcelQuery = new QueryBuilder(
+    Parcel.find().populate("sender receiver"),
+    query
+  )
+    .search(["trackingId", "type", "status"])
+    .filter()
+    .sort()
+    .paginate();
+
+  return await parcelQuery.exec();
 };
 
 const getParcelsBySender = async (senderId: string): Promise<IParcel[]> => {
@@ -77,7 +89,7 @@ const updateParcelStatus = async (
 
   const currentStatus = parcel.status;
 
-  // ✅ Validate allowed transition
+  // Validate allowed transition
   const allowedNextStatuses = VALID_STATUS_TRANSITIONS[currentStatus];
   if (!allowedNextStatuses.includes(status)) {
     throw new AppError(

@@ -14,16 +14,14 @@ const createParcelValidationSchema = z.object({
 });
 
 const updateParcelValidationSchema = z.object({
-  body: z.object({
-    type: z.string().optional(),
-    weight: z.number().positive().optional(),
-    price: z.number().positive().optional(),
-    fee: z.number().positive().optional(),
-    senderAddress: z.string().optional(),
-    receiverAddress: z.string().optional(),
-    deliveryDate: z.string().datetime().optional(),
-    status: z.nativeEnum(ParcelStatus).optional(),
-  }),
+  type: z.string().optional(),
+  weight: z.number().positive().optional(),
+  price: z.number().positive().optional(),
+  fee: z.number().positive().optional(),
+  senderAddress: z.string().optional(),
+  receiverAddress: z.string().optional(),
+  deliveryDate: z.string().datetime().optional(),
+  status: z.nativeEnum(ParcelStatus).optional(),
 });
 
 export const ParcelValidation = {

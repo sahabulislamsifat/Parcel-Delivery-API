@@ -13,13 +13,20 @@ router.post(
   UserController.createUser
 );
 
-router.get("/all-users", checkAuth("ADMIN"), UserController.getAllUsers);
+router.get("/all-users", checkAuth(Role.ADMIN), UserController.getAllUsers);
 
 router.patch(
   "/:id",
   validateRequest(updateUserZodSchema),
   checkAuth(...Object.values(Role)),
   UserController.updateUser
+);
+
+// Block/Unblock endpoint (ADMIN only)
+router.patch(
+  "/block/:id",
+  checkAuth(Role.ADMIN),
+  UserController.blockUserController
 );
 
 export const UserRoutes = router;

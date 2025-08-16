@@ -1,5 +1,5 @@
 import { model, Schema } from "mongoose";
-import { IUser, Role, UserStatus, AuthProviderType } from "./user.interface";
+import { AuthProviderType, IUser, Role, UserStatus } from "./user.interface";
 
 // subSchema for address
 const addressSchema = new Schema(

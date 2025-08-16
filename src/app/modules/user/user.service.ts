@@ -2,7 +2,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { envVariables } from "../../config/env";
 import AppError from "../../errorHelper/AppError";
 import httpStatus from "../../utils/httpStatus";
-import { IAuthProvider, IUser, Role, AuthProviderType } from "./user.interface";
+import { IUser, Role, AuthProviderType, UserStatus } from "./user.interface";
 import { User } from "./user.model";
 import bcryptjs from "bcryptjs";
 
@@ -10,7 +10,6 @@ import bcryptjs from "bcryptjs";
 const createUser = async (payload: Partial<IUser>): Promise<IUser> => {
   const { email, password, ...rest } = payload;
 
-  // Check if email already exists
   const isUserExist = await User.findOne({ email });
   if (isUserExist) {
     throw new AppError(httpStatus.BAD_REQUEST, "User already exists!");
@@ -24,8 +23,7 @@ const createUser = async (payload: Partial<IUser>): Promise<IUser> => {
     );
   }
 
-  // Auth provider setup
-  const authProvider: IAuthProvider = {
+  const authProvider = {
     provider: AuthProviderType.CREDENTIALS,
     providerId: email as string,
     email,
@@ -53,7 +51,7 @@ const getAllUsers = async (page = 1, limit = 10) => {
   };
 };
 
-// Update User with role-based restrictions
+// Update User
 const updateUser = async (
   id: string,
   payload: Partial<IUser>,
@@ -64,17 +62,14 @@ const updateUser = async (
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  // Role change restrictions
   if (payload.role && decodedToken.role !== Role.ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, "Only ADMIN can change roles");
   }
 
-  // Status change restrictions
   if (payload.status && decodedToken.role !== Role.ADMIN) {
     throw new AppError(httpStatus.FORBIDDEN, "Only ADMIN can change status");
   }
 
-  // Password hashing if updated
   if (payload.password) {
     payload.password = await bcryptjs.hash(
       payload.password,
@@ -90,8 +85,19 @@ const updateUser = async (
   return updatedUser;
 };
 
+// Block/Unblock User
+const blockUser = async (id: string, block: boolean): Promise<IUser | null> => {
+  const user = await User.findById(id);
+  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
+
+  user.status = block ? UserStatus.BLOCKED : UserStatus.ACTIVE;
+  await user.save();
+  return user;
+};
+
 export const UserService = {
   createUser,
   getAllUsers,
   updateUser,
+  blockUser,
 };

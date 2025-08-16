@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { DeliveryChargeService } from "../deliveryCharge/deliveryCharge.service";
 import { IParcel, ParcelStatus } from "./parcel.interface";
 import { Parcel } from "./parcel.model";
+import { QueryBuilder } from "../../utils/QueryBuilder";
 import AppError from "../../errorHelper/AppError";
 import httpStatus from "../../utils/httpStatus";
 
@@ -12,27 +13,26 @@ const generateTrackingId = (): string => {
   return `TRK-${date}-${random}`;
 };
 
-// ✅ Allowed status transitions
+// Allowed status transitions
 const VALID_STATUS_TRANSITIONS: Record<ParcelStatus, ParcelStatus[]> = {
   [ParcelStatus.REQUESTED]: [ParcelStatus.APPROVED, ParcelStatus.CANCELLED],
   [ParcelStatus.APPROVED]: [ParcelStatus.DISPATCHED, ParcelStatus.CANCELLED],
   [ParcelStatus.DISPATCHED]: [ParcelStatus.IN_TRANSIT, ParcelStatus.CANCELLED],
   [ParcelStatus.IN_TRANSIT]: [ParcelStatus.DELIVERED, ParcelStatus.RETURNED],
-  [ParcelStatus.DELIVERED]: [], // Final
-  [ParcelStatus.CANCELLED]: [], // Final
-  [ParcelStatus.RETURNED]: [], // Final
+  [ParcelStatus.DELIVERED]: [],
+  [ParcelStatus.CANCELLED]: [],
+  [ParcelStatus.RETURNED]: [],
 };
 
 const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
   payload.trackingId = generateTrackingId();
   payload.status = ParcelStatus.REQUESTED;
 
-  // Calculate dynamic fee
-  if (!payload.fee) {
-    payload.fee = await DeliveryChargeService.calculateFee(
-      payload.receiverAddress as string, // district
-      payload.type as string, // parcel type
-      payload.weight as number // parcel weight
+  if (!payload.deliveryCharge) {
+    payload.deliveryCharge = await DeliveryChargeService.calculateFee(
+      payload.receiverAddress as string,
+      payload.type as string,
+      payload.weight as number
     );
   }
 
@@ -47,8 +47,18 @@ const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
   return Parcel.create(payload);
 };
 
-const getAllParcels = async (): Promise<IParcel[]> => {
-  return Parcel.find().populate("sender receiver");
+const getAllParcels = async (
+  query: Record<string, unknown>
+): Promise<IParcel[]> => {
+  const parcelQuery = new QueryBuilder(
+    Parcel.find().populate("sender receiver"),
+    query
+  )
+    .search(["trackingId", "type", "status"])
+    .filter()
+    .sort()
+    .paginate();
+  return await parcelQuery.exec();
 };
 
 const getParcelsBySender = async (senderId: string): Promise<IParcel[]> => {
@@ -76,8 +86,6 @@ const updateParcelStatus = async (
   if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
 
   const currentStatus = parcel.status;
-
-  // ✅ Validate allowed transition
   const allowedNextStatuses = VALID_STATUS_TRANSITIONS[currentStatus];
   if (!allowedNextStatuses.includes(status)) {
     throw new AppError(
@@ -94,13 +102,24 @@ const updateParcelStatus = async (
     note,
     location,
   });
-
   await parcel.save();
   return parcel;
 };
 
 const deleteParcel = async (parcelId: string): Promise<IParcel | null> => {
   return Parcel.findByIdAndDelete(parcelId);
+};
+
+const blockUnblockParcel = async (
+  parcelId: string,
+  block: boolean
+): Promise<IParcel | null> => {
+  const parcel = await Parcel.findById(parcelId);
+  if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+
+  parcel.isBlocked = block;
+  await parcel.save();
+  return parcel;
 };
 
 export const ParcelService = {
@@ -111,4 +130,5 @@ export const ParcelService = {
   getParcelByTrackingId,
   updateParcelStatus,
   deleteParcel,
+  blockUnblockParcel,
 };

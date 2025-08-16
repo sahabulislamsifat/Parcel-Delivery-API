@@ -22,10 +22,10 @@ export interface IParcelStatusLog {
 export interface IParcel {
   _id?: string;
   trackingId: string;
-  type: string; // electronics, documents, etc.
+  type: string;
   weight: number;
   price: number;
-  fee: number; // delivery fee
+  deliveryCharge: number;
   sender: Types.ObjectId | IUser["_id"];
   receiver: Types.ObjectId | IUser["_id"];
   senderAddress: string;

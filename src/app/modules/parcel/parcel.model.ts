@@ -18,7 +18,7 @@ const parcelSchema = new Schema<IParcel>(
     type: { type: String, required: true },
     weight: { type: Number, required: true },
     price: { type: Number, required: true },
-    fee: { type: Number, required: true },
+    deliveryCharge: { type: Number, required: true },
     sender: { type: Types.ObjectId, ref: "User", required: true },
     receiver: { type: Types.ObjectId, ref: "User", required: true },
     senderAddress: { type: String, required: true },

@@ -28,12 +28,11 @@ const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
   payload.trackingId = generateTrackingId();
   payload.status = ParcelStatus.REQUESTED;
 
-  // Calculate dynamic fee
-  if (!payload.fee) {
-    payload.fee = await DeliveryChargeService.calculateFee(
-      payload.receiverAddress as string, // district
-      payload.type as string, // parcel type
-      payload.weight as number // parcel weight
+  if (!payload.deliveryCharge) {
+    payload.deliveryCharge = await DeliveryChargeService.calculateFee(
+      payload.receiverAddress as string,
+      payload.type as string,
+      payload.weight as number
     );
   }
 
@@ -59,7 +58,6 @@ const getAllParcels = async (
     .filter()
     .sort()
     .paginate();
-
   return await parcelQuery.exec();
 };
 
@@ -88,8 +86,6 @@ const updateParcelStatus = async (
   if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
 
   const currentStatus = parcel.status;
-
-  // Validate allowed transition
   const allowedNextStatuses = VALID_STATUS_TRANSITIONS[currentStatus];
   if (!allowedNextStatuses.includes(status)) {
     throw new AppError(
@@ -106,13 +102,24 @@ const updateParcelStatus = async (
     note,
     location,
   });
-
   await parcel.save();
   return parcel;
 };
 
 const deleteParcel = async (parcelId: string): Promise<IParcel | null> => {
   return Parcel.findByIdAndDelete(parcelId);
+};
+
+const blockUnblockParcel = async (
+  parcelId: string,
+  block: boolean
+): Promise<IParcel | null> => {
+  const parcel = await Parcel.findById(parcelId);
+  if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+
+  parcel.isBlocked = block;
+  await parcel.save();
+  return parcel;
 };
 
 export const ParcelService = {
@@ -123,4 +130,5 @@ export const ParcelService = {
   getParcelByTrackingId,
   updateParcelStatus,
   deleteParcel,
+  blockUnblockParcel,
 };

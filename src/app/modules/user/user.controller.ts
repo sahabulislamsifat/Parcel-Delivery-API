@@ -16,7 +16,7 @@ const createUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// Get All Users (with pagination)
+// Get All Users
 const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
@@ -45,8 +45,33 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// Block/Unblock User
+const blockUserController = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { block } = req.body; // true = block, false = unblock
+
+  if (typeof block !== "boolean") {
+    return sendResponse(res, {
+      statusCode: httpStatus.BAD_REQUEST,
+      success: false,
+      message: "Block must be boolean",
+      data: null,
+    });
+  }
+
+  const result = await UserService.blockUser(id, block);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `User ${block ? "blocked" : "unblocked"} successfully!`,
+    data: result,
+  });
+});
+
 export const UserController = {
   createUser,
   getAllUsers,
   updateUser,
+  blockUserController,
 };

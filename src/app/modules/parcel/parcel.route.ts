@@ -35,6 +35,12 @@ router.patch(
   ParcelController.updateParcelStatus
 );
 
+router.patch(
+  "/block/:id",
+  checkAuth(Role.ADMIN),
+  ParcelController.blockUnblockParcel
+);
+
 router.delete("/:id", checkAuth(Role.ADMIN), ParcelController.deleteParcel);
 
 export const ParcelRoutes = router;

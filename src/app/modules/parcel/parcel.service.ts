@@ -12,6 +12,17 @@ const generateTrackingId = (): string => {
   return `TRK-${date}-${random}`;
 };
 
+// ✅ Allowed status transitions
+const VALID_STATUS_TRANSITIONS: Record<ParcelStatus, ParcelStatus[]> = {
+  [ParcelStatus.REQUESTED]: [ParcelStatus.APPROVED, ParcelStatus.CANCELLED],
+  [ParcelStatus.APPROVED]: [ParcelStatus.DISPATCHED, ParcelStatus.CANCELLED],
+  [ParcelStatus.DISPATCHED]: [ParcelStatus.IN_TRANSIT, ParcelStatus.CANCELLED],
+  [ParcelStatus.IN_TRANSIT]: [ParcelStatus.DELIVERED, ParcelStatus.RETURNED],
+  [ParcelStatus.DELIVERED]: [], // Final
+  [ParcelStatus.CANCELLED]: [], // Final
+  [ParcelStatus.RETURNED]: [], // Final
+};
+
 const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
   payload.trackingId = generateTrackingId();
   payload.status = ParcelStatus.REQUESTED;
@@ -64,16 +75,15 @@ const updateParcelStatus = async (
   const parcel = await Parcel.findById(parcelId);
   if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
 
-  if (
-    parcel.status === ParcelStatus.DISPATCHED ||
-    parcel.status === ParcelStatus.DELIVERED
-  ) {
-    if (status === ParcelStatus.CANCELLED) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "Cannot cancel dispatched or delivered parcel"
-      );
-    }
+  const currentStatus = parcel.status;
+
+  // ✅ Validate allowed transition
+  const allowedNextStatuses = VALID_STATUS_TRANSITIONS[currentStatus];
+  if (!allowedNextStatuses.includes(status)) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Invalid status transition: ${currentStatus} → ${status}`
+    );
   }
 
   parcel.status = status;

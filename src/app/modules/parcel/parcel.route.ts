@@ -29,7 +29,7 @@ router.get(
 );
 
 router.patch(
-  "/:id/status",
+  "/status/:id",
   checkAuth(Role.SENDER, Role.RECEIVER, Role.ADMIN),
   validateRequest(ParcelValidation.updateParcelValidationSchema),
   ParcelController.updateParcelStatus

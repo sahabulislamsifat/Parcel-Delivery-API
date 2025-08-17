@@ -1,16 +1,13 @@
 /* eslint-disable no-console */
-import express from "express";
 import { createServer } from "http";
+import mongoose from "mongoose";
 import app from "./app";
 import { envVariables } from "./app/config/env";
-import mongoose from "mongoose";
 
 const server = createServer(app);
 
-app.use(express.json());
-
 const startServer = async () => {
-  console.log(envVariables.NODE_ENV);
+  console.log("Environment:", envVariables.NODE_ENV);
 
   try {
     await mongoose.connect(envVariables.DB_URL);
@@ -28,46 +25,23 @@ const startServer = async () => {
   await startServer();
 })();
 
-//* Unhandled Rejection
+//* graceful shutdown handlers
 process.on("unhandledRejection", (err) => {
-  console.log("unhandledRejection is detected. Shutting down...", err);
-  if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
+  console.error("unhandledRejection is detected. Shutting down...", err);
+  server.close(() => process.exit(1));
 });
 
-//* Uncaught Exception Handling
 process.on("uncaughtException", (err) => {
-  console.log("uncaughtException is detected. Shutting down...", err);
-  if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
+  console.error("uncaughtException is detected. Shutting down...", err);
+  server.close(() => process.exit(1));
 });
 
-//* Signal termination sigterm
 process.on("SIGTERM", () => {
-  console.log("SIGTERM is received. Shutting down gracefully...");
-  if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
-  }
+  console.log("SIGTERM received. Shutting down gracefully...");
+  server.close(() => process.exit(0));
 });
 
-//* Signal termination sigint
 process.on("SIGINT", () => {
-  console.log("SIGINT is received. Shutting down gracefully...");
-  if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
-  }
+  console.log("SIGINT received. Shutting down gracefully...");
+  server.close(() => process.exit(0));
 });

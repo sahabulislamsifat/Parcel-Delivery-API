@@ -11,6 +11,7 @@ import "./app/config/passport";
 
 const app = express();
 
+// session & passport
 app.use(
   expressSession({
     secret: envVariables.EXPRESS_SESSION_SECRET,
@@ -19,25 +20,30 @@ app.use(
   })
 );
 app.use(passport.initialize());
-app.use(passport?.session());
+app.use(passport.session());
+
+// middleware
 app.use(cookieParser());
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173"], // চাইলে পরে live domain যোগ করবে
     credentials: true,
   })
 );
 
+// routes
 app.use("/api/v1", router);
 
+// test route
 app.get("/", (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
-    message: "Welcome to the Parcel Delivery System API",
+    message: "Welcome to the Parcel Delivery System API 🚀",
   });
 });
 
+// error handler
 app.use(globalErrorHandler);
 app.use(notFound);
 

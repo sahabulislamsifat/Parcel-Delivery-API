@@ -6,21 +6,23 @@
 
 ## Live Link
 
-[https://your-parcel-delivery-api.vercel.app/](https://your-parcel-delivery-api.vercel.app/)
+```
+https://parcel-delivery-system-api.vercel.app
+```
 
 ## Admin, Sender And Receiver Email, Password
 
 Admin:\
 email: [admin@gmail.com](mailto:admin@gmail.com)\
-password: Admin123@
+password: Admin@123
 
 Sender:\
 email: [sender@gmail.com](mailto:sender@gmail.com)\
-password: Password\@123
+password: Sender@123
 
 Receiver:\
 email: [receiver@gmail.com](mailto:receiver@gmail.com)\
-password: Password\@123
+password: Receiver@123
 
 ---
 
@@ -57,7 +59,7 @@ password: Password\@123
 ## Installation & Setup
 
 ```bash
-git clone https://github.com/your-username/parcel-delivery-api.git
+git clone https://github.com/sahabulislamsifat/parcel-delivery-api.git
 cd parcel-delivery-api
 npm install
 npm run dev
@@ -138,19 +140,19 @@ Request Body:
 #### 2. Get All Users (Admin)
 
 ```
-GET /api/v1/users
+GET /api/v1/user
 ```
 
 #### 3. Block User (Admin)
 
 ```
-PATCH /api/v1/users/block/:id
+PATCH /api/v1/user/block/:id
 ```
 
 #### 4. Unblock User (Admin)
 
 ```
-PATCH /api/v1/users/unblock/:id
+PATCH /api/v1/user/unblock/:id
 ```
 
 ---
@@ -168,7 +170,7 @@ Request Body:
 ```json
 {
   "email": "admin@gmail.com",
-  "password": "Admin123@"
+  "password": "Admin@123"
 }
 ```
 
@@ -194,7 +196,7 @@ Response:
 #### 1. Create Parcel (Sender)
 
 ```
-POST /api/v1/parcels
+POST /api/v1/parcel
 ```
 
 Request Body:
@@ -213,31 +215,31 @@ Request Body:
 #### 2. Cancel Parcel (Sender)
 
 ```
-PATCH /api/v1/parcels/cancel/:id
+PATCH /api/v1/parcel/cancel/:id
 ```
 
 #### 3. View My Parcels (Sender)
 
 ```
-GET /api/v1/parcels/me
+GET /api/v1/parcel/me
 ```
 
 #### 4. View Incoming Parcels (Receiver)
 
 ```
-GET /api/v1/parcels/incoming
+GET /api/v1/parcel/incoming
 ```
 
 #### 5. Confirm Delivery (Receiver)
 
 ```
-PATCH /api/v1/parcels/confirm/:id
+PATCH /api/v1/parcel/confirm/:id
 ```
 
 #### 6. Update Parcel Status (Admin)
 
 ```
-PATCH /api/v1/parcels/status/:id
+PATCH /api/v1/parcel/status/:id
 ```
 
 Request Body:
@@ -251,7 +253,7 @@ Request Body:
 #### 7. Get All Parcels (Admin)
 
 ```
-GET /api/v1/parcels
+GET /api/v1/parcel
 ```
 
 ---

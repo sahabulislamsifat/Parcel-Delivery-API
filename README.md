@@ -1,149 +1,228 @@
-📦 Parcel Delivery API
-🎯 Project Overview
+Parcel Delivery API
 
-Design and build a secure, modular, and role-based backend API for a parcel delivery system (inspired by Pathao Courier or Sundarban) using Express.js and Mongoose.
+A secure, modular, and role-based backend API for a parcel delivery system inspired by real-world platforms like Pathao Courier and Sundarban. Built with Express.js and Mongoose, this system handles user authentication, parcel operations, and delivery status tracking with proper business rules and validations.
 
-The system allows:
+Live Link
+https://parcel-delivery-system-api.vercel.app/
 
-👤 Senders to create, cancel, and track their parcels
+Admin, Sender, Receiver Credentials
+Admin:
+email: admin@gmail.com
+password: Admin@123
 
-📥 Receivers to confirm delivery and view history
+Sender:
+email: sender@gmail.com
+password: Sender@123
 
-🛡 Admins to manage users and parcels, block/unblock, and update statuses
+Receiver:
+email: receiver@gmail.com
+password: Receiver@123
 
-All parcels include a status history log embedded inside the parcel schema to ensure complete tracking.
+Features
 
-⚙️ Tech Stack
+JWT-based login and registration
 
-Backend: Express.js, TypeScript
+Role-based access control (admin, sender, receiver)
 
-Database: MongoDB (Mongoose ODM)
+Sender can create parcel requests, cancel (if not dispatched), view all parcels & logs
 
-Auth: JWT + bcrypt password hashing
+Receiver can view incoming parcels, confirm delivery, see history
 
-Others: Middleware, Role-based Authorization, Error Handling
+Admin can manage users and parcels, block/unblock, update statuses
 
-📁 Project Structure
+Unique tracking ID system for each parcel (e.g., TRK-YYYYMMDD-xxxxxx)
+
+Status logs embedded in parcel schema (Requested → Approved → Dispatched → In Transit → Delivered)
+
+Proper validation & transactional logic
+
+Modular, scalable project structure
+
+🛠 Technologies Used
+
+Node.js
+
+Express.js
+
+TypeScript
+
+MongoDB
+
+Mongoose
+
+bcryptjs
+
+jsonwebtoken
+
+cookie-parser
+
+http-status-codes
+
+dotenv
+
+Installation & Setup
+git clone https://github.com/your-username/parcel-delivery-api.git
+
+cd parcel-delivery-api
+
+npm install
+
+npm run dev
+
+Make sure you have a MongoDB connection string set in your .env file
+
+Project Structure
 src/
 ├── modules/
-│ ├── auth/ # login, register, JWT
-│ ├── user/ # user roles, block/unblock
-│ ├── parcel/ # parcel + status log handling
-├── middlewares/ # auth, error handling, validation
-├── config/ # environment, db
-├── utils/ # helper functions
-├── app.ts # main entry
+│ ├── auth/
+│ │ ├── auth.controller.ts
+│ │ ├── auth.routes.ts
+│ │ ├── auth.service.ts
+│ │
+│ ├── user/
+│ │ ├── user.controller.ts
+│ │ ├── user.interface.ts
+│ │ ├── user.model.ts
+│ │ ├── user.routes.ts
+│ │ ├── user.service.ts
+│ │ └── user.zod.validation.ts
+│ │
+│ ├── parcel/
+│ │ ├── parcel.controller.ts
+│ │ ├── parcel.interface.ts
+│ │ ├── parcel.model.ts
+│ │ ├── parcel.routes.ts
+│ │ ├── parcel.service.ts
+│ │ └── parcel.zod.validation.ts
+│
+├── routes/
+│ └── routes.ts
+│
+├── middlewares/
+│ ├── checkAuth.ts
+│ ├── globalErrorHandler.ts
+│ └── notFound.ts
+│
+├── utils/
+│ ├── catchAsync.ts
+│ ├── sendResponse.ts
+│ └── setToken.ts
+│
+└── errorHelpers/
+└── AppError.ts
 
-🔐 Authentication & Roles
+API Endpoints
+Auth Endpoints
 
-✅ JWT-based Authentication
-
-✅ Roles:
-
-admin
-
-sender
-
-receiver
-
-🚀 Features
-👤 Sender
-
-Create parcel request
-
-Cancel parcel (if not dispatched)
-
-View own parcels + status logs
-
-📥 Receiver
-
-View incoming parcels
-
-Confirm delivery
-
-Check delivery history
-
-🛡 Admin
-
-Manage all users & parcels
-
-Block/unblock users or parcels
-
-Update parcel statuses (e.g., Approved → Dispatched → Delivered)
-
-📦 Parcel & Status Flow
-
-Parcel Statuses:
-Requested → Approved → Dispatched → In Transit → Delivered
-
-Tracking ID:
-Format → TRK-YYYYMMDD-xxxxxx
-
-Status Log Schema:
+1. Register User (Sender/Receiver)
+   POST /api/v1/auth/register
 
 {
-status: string,
-note?: string,
-updatedBy: string, // admin/system/user
-timestamp: Date
+"name": "Toma",
+"email": "toma@gmail.com",
+"password": "Password@123",
+"role": "sender",
+"phone": "+8801700000000",
+"address": "123 Gulshan Avenue, Dhaka"
 }
 
-📜 API Endpoints
-🔑 Auth
+2. Login User
+   POST /api/v1/auth/login
 
-POST /api/v1/auth/register → Register new user
+{
+"email": "admin@gmail.com",
+"password": "Admin123@"
+}
 
-POST /api/v1/auth/login → Login & get JWT
+User Endpoints
 
-👤 User
+1. Get All Users (Admin)
+   GET /api/v1/users
 
-PATCH /api/v1/user/block/:id → Admin block user
+2. Block User (Admin)
+   PATCH /api/v1/users/block/:id
 
-PATCH /api/v1/user/unblock/:id → Admin unblock user
+3. Unblock User (Admin)
+   PATCH /api/v1/users/unblock/:id
 
-📦 Parcel
+Parcel Endpoints
 
-POST /api/v1/parcels → Sender create parcel
+1. Create Parcel (Sender)
+   POST /api/v1/parcels
 
-GET /api/v1/parcels/me → Sender view own parcels
+{
+"type": "Documents",
+"weight": 2,
+"senderAddress": "Banani, Dhaka",
+"receiverAddress": "Chittagong",
+"receiverId": "68a0cc540112c89682778701",
+"fee": 200
+}
 
-PATCH /api/v1/parcels/cancel/:id → Sender cancel parcel
+2. Cancel Parcel (Sender)
+   PATCH /api/v1/parcels/cancel/:id
 
-GET /api/v1/parcels/incoming → Receiver view incoming parcels
+3. View My Parcels (Sender)
+   GET /api/v1/parcels/me
 
-PATCH /api/v1/parcels/confirm/:id → Receiver confirm delivery
+4. View Incoming Parcels (Receiver)
+   GET /api/v1/parcels/incoming
 
-GET /api/v1/parcels → Admin get all parcels
+5. Confirm Delivery (Receiver)
+   PATCH /api/v1/parcels/confirm/:id
 
-PATCH /api/v1/parcels/status/:id → Admin update parcel status
+6. Update Parcel Status (Admin)
+   PATCH /api/v1/parcels/status/:id
 
-🔒 Access Control
-Endpoint Sender Receiver Admin
-Register/Login ✅ ✅ ✅
-Create Parcel ✅ ❌ ❌
-Cancel Parcel ✅ (own only) ❌ ❌
-View My Parcels ✅ ❌ ❌
-Incoming Parcels ❌ ✅ ❌
-Confirm Delivery ❌ ✅ ❌
-All Parcels ❌ ❌ ✅
-Block/Unblock User ❌ ❌ ✅
-Update Parcel Status ❌ ❌ ✅
-🧪 Testing & Documentation
+{
+"status": "IN_TRANSIT"
+}
 
-✅ Postman Collection included with:
+7. Get All Parcels (Admin)
+   GET /api/v1/parcels
 
-Valid & Invalid requests
+Example Status Flow
 
-Query param filtering
+REQUESTED → APPROVED → DISPATCHED → IN_TRANSIT → DELIVERED
 
-Authentication flows
+Each status change is logged inside statusLogs[] with:
 
-🧠 Future Enhancements (Optional)
+{
+"status": "DISPATCHED",
+"timestamp": "2025-08-18T10:00:00Z",
+"updatedBy": "admin"
+}
 
-Public Tracking via Tracking ID
+Dependencies
 
-Fee Calculation (weight/distance based)
+"bcryptjs"
 
-Coupons & Discounts
+"cookie-parser"
 
-Delivery Agent Assignment
+"cors"
+
+"dotenv"
+
+"express"
+
+"http-status-codes"
+
+"jsonwebtoken"
+
+"mongoose"
+
+"zod"
+
+DevDependencies
+
+"@types/cookie-parser"
+
+"@types/cors"
+
+"@types/express"
+
+"@types/jsonwebtoken"
+
+"ts-node-dev"
+
+"typescript"

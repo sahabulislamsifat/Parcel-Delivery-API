@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 const getUserId = (req: Request): string => {
   if (!req.user?.userId)
     throw new AppError(401, "Unauthorized: User not found");
-  return req.user.userId;
+  return req.user.userId.toString();
 };
 
 const createParcel = async (
@@ -19,6 +19,7 @@ const createParcel = async (
   try {
     const senderId = getUserId(req);
     const payload = { ...req.body, sender: senderId };
+
     const parcel = await ParcelService.createParcel(payload);
     sendResponse(res, {
       success: true,
@@ -56,7 +57,9 @@ const getParcelsBySender = async (
 ) => {
   try {
     const senderId = getUserId(req);
+
     const parcels = await ParcelService.getParcelsBySender(senderId);
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,

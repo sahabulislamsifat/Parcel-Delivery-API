@@ -36,7 +36,7 @@ router.patch(
 );
 
 router.patch(
-  "/block/:id",
+  "/block-unblock/:id",
   checkAuth(Role.ADMIN),
   ParcelController.blockUnblockParcel
 );

@@ -28,6 +28,8 @@ const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
   payload.trackingId = generateTrackingId();
   payload.status = ParcelStatus.REQUESTED;
 
+  payload.sender = new Types.ObjectId(payload.sender as string);
+
   if (!payload.deliveryCharge) {
     payload.deliveryCharge = await DeliveryChargeService.calculateFee(
       payload.receiverAddress as string,
@@ -62,7 +64,9 @@ const getAllParcels = async (
 };
 
 const getParcelsBySender = async (senderId: string): Promise<IParcel[]> => {
-  return Parcel.find({ sender: senderId }).populate("receiver");
+  return Parcel.find({ sender: new Types.ObjectId(senderId) })
+    .populate("receiver")
+    .exec();
 };
 
 const getParcelsByReceiver = async (receiverId: string): Promise<IParcel[]> => {

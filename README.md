@@ -118,41 +118,51 @@ src/
 
 ### User Endpoints
 
-#### 1. User Registration
+#### 1. User Registration (Public)
 
 ```
-POST /api/v1/auth/register
+POST /api/v1/user/register
 ```
 
 Request Body:
 
 ```json
 {
-  "name": "Toma",
-  "email": "toma@gmail.com",
+  "name": "Mr Sifat",
+  "email": "sifat@gmail.com",
   "password": "Password@123",
-  "role": "sender",
-  "phone": "+8801706835770",
-  "address": "123 Gulshan Avenue, Dhaka, Bangladesh"
+  "phone": "+8801712345678",
+  "address": {
+    "street": "123 Main Road",
+    "city": "Dhaka",
+    "district": "Dhaka",
+    "postalCode": "1207"
+  }
 }
 ```
 
 #### 2. Get All Users (Admin)
 
 ```
-GET /api/v1/user
+GET /v1/user/all-users
 ```
 
-#### 3. Block User (Admin)
+#### 3. Update User (Own Profile or Admin)
 
 ```
-PATCH /api/v1/user/block/:id
+PATCH api/v1/user/:id
 ```
 
-#### 4. Unblock User (Admin)
+#### 4. Block/Unblock User (Admin)
 
 ```
-PATCH /api/v1/user/unblock/:id
+PATCH api/v1/user/block/:id
+```
+
+#### 5. Delete User (Admin)
+
+```
+PATCH api/v1/user/delete/:id
 ```
 
 ---
@@ -174,7 +184,25 @@ Request Body:
 }
 ```
 
-#### 2. User Logout
+#### 2. User Get New Access Token
+
+```
+POST /api/v1/auth/refresh-token
+```
+
+#### 3. Google Auth
+
+```
+POST /api/v1/auth/google
+```
+
+#### 4. Reset Password
+
+```
+POST /api/v1/auth/reset-password
+```
+
+#### 3. User Logout
 
 ```
 POST /api/v1/auth/logout
@@ -196,7 +224,7 @@ Response:
 #### 1. Create Parcel (Sender)
 
 ```
-POST /api/v1/parcel
+POST /api/v1/parcel/create
 ```
 
 Request Body:
@@ -212,19 +240,13 @@ Request Body:
 }
 ```
 
-#### 2. Cancel Parcel (Sender)
-
-```
-PATCH /api/v1/parcel/cancel/:id
-```
-
-#### 3. View My Parcels (Sender)
+#### 2. View My Parcels (Sender)
 
 ```
 GET /api/v1/parcel/me
 ```
 
-#### 4. View Incoming Parcels (Receiver)
+#### 3. View Incoming Parcels (Receiver)
 
 ```
 GET /api/v1/parcel/incoming

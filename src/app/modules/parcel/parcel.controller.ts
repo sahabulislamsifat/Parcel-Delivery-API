@@ -117,6 +117,26 @@ const updateParcelStatus = async (
   }
 };
 
+const confirmDelivery = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const receiverId = getUserId(req);
+    const parcel = await ParcelService.confirmDelivery(id, receiverId);
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Parcel delivery confirmed",
+      data: parcel,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteParcel = async (
   req: Request,
   res: Response,
@@ -162,6 +182,7 @@ export const ParcelController = {
   getParcelsBySender,
   getParcelsByReceiver,
   updateParcelStatus,
+  confirmDelivery,
   deleteParcel,
   blockUnblockParcel,
 };

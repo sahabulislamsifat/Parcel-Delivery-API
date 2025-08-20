@@ -16,14 +16,10 @@ router.post(
 
 router.get("/", checkAuth(Role.ADMIN), ParcelController.getAllParcels);
 
-router.get(
-  "/sender",
-  checkAuth(Role.SENDER),
-  ParcelController.getParcelsBySender
-);
+router.get("/me", checkAuth(Role.SENDER), ParcelController.getParcelsBySender);
 
 router.get(
-  "/receiver",
+  "/incoming",
   checkAuth(Role.RECEIVER),
   ParcelController.getParcelsByReceiver
 );
@@ -33,6 +29,12 @@ router.patch(
   checkAuth(Role.SENDER, Role.RECEIVER, Role.ADMIN),
   validateRequest(ParcelValidation.updateParcelValidationSchema),
   ParcelController.updateParcelStatus
+);
+
+router.patch(
+  "/confirm/:id",
+  checkAuth(Role.RECEIVER),
+  ParcelController.confirmDelivery
 );
 
 router.patch(

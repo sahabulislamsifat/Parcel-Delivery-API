@@ -41,3 +41,13 @@ export interface IUser {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+export type UserResponse = Omit<IUser, "password"> & {
+  id: string;
+};
+
+export interface UserFilter {
+  role?: Role;
+  status?: UserStatus;
+  search?: string;
+}

@@ -6,9 +6,19 @@ export enum ParcelStatus {
   APPROVED = "APPROVED",
   DISPATCHED = "DISPATCHED",
   IN_TRANSIT = "IN_TRANSIT",
+  OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY",
   DELIVERED = "DELIVERED",
   CANCELLED = "CANCELLED",
   RETURNED = "RETURNED",
+  BLOCKED = "BLOCKED",
+}
+
+export enum ParcelType {
+  DOCUMENT = "DOCUMENT",
+  PACKAGE = "PACKAGE",
+  FRAGILE = "FRAGILE",
+  FOOD = "FOOD",
+  ELECTRONICS = "ELECTRONICS",
 }
 
 export interface IParcelStatusLog {
@@ -20,12 +30,13 @@ export interface IParcelStatusLog {
 }
 
 export interface IParcel {
-  _id?: string;
+  _id?: Types.ObjectId;
   trackingId: string;
-  type: string;
+  type: ParcelType;
   weight: number;
   price: number;
   deliveryCharge: number;
+  totalAmount: number;
   sender: Types.ObjectId | IUser["_id"];
   receiver: Types.ObjectId | IUser["_id"];
   senderAddress: string;
@@ -34,6 +45,19 @@ export interface IParcel {
   status: ParcelStatus;
   statusLogs: IParcelStatusLog[];
   isBlocked?: boolean;
+  isPaid: boolean;
+  paymentMethod?: string;
+  assignedDriver?: Types.ObjectId | IUser["_id"];
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface ParcelFilter {
+  status?: ParcelStatus;
+  type?: ParcelType;
+  sender?: string;
+  receiver?: string;
+  trackingId?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }

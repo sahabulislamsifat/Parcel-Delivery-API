@@ -33,6 +33,7 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: [true, "Name is required"],
       trim: true,
+      maxlength: 100,
     },
     email: {
       type: String,
@@ -40,10 +41,19 @@ const userSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please enter a valid email",
+      ],
     },
     phone: {
       type: String,
       unique: true,
+      sparse: true,
+      match: [
+        /^(?:\+8801\d{9}|01\d{9})$/,
+        "Please enter a valid Bangladeshi phone number",
+      ],
     },
     password: {
       type: String,
@@ -51,10 +61,12 @@ const userSchema = new Schema<IUser>(
         return !(this as IUser).authProviders?.length;
       },
       select: false,
+      minlength: 8,
     },
     role: {
       type: String,
       enum: Object.values(Role),
+      required: true,
       default: Role.SENDER,
     },
     status: {
@@ -70,9 +82,16 @@ const userSchema = new Schema<IUser>(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+    },
+    toObject: {
+      virtuals: true,
+    },
   }
 );
+
+userSchema.index({ role: 1, status: 1 });
+userSchema.index({ createdAt: -1 });
 
 export const User = model<IUser>("User", userSchema);

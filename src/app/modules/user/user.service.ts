@@ -1,14 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JwtPayload } from "jsonwebtoken";
 import { envVariables } from "../../config/env";
 import AppError from "../../errorHelper/AppError";
 import httpStatus from "../../utils/httpStatus";
-import { IUser, Role, AuthProviderType, UserStatus } from "./user.interface";
+import {
+  IUser,
+  Role,
+  AuthProviderType,
+  UserStatus,
+  UserFilter,
+  UserResponse,
+} from "./user.interface";
 import { User } from "./user.model";
 import bcryptjs from "bcryptjs";
 
 // Create User
-const createUser = async (payload: Partial<IUser>): Promise<IUser> => {
-  const { email, password, ...rest } = payload;
+const createUser = async (payload: Partial<IUser>): Promise<UserResponse> => {
+  const { email, password, role = Role.SENDER, ...rest } = payload;
 
   const isUserExist = await User.findOne({ email });
   if (isUserExist) {
@@ -32,44 +40,80 @@ const createUser = async (payload: Partial<IUser>): Promise<IUser> => {
   const user = await User.create({
     email,
     password: hashedPassword,
+    role,
     authProviders: [authProvider],
     ...rest,
   });
 
-  return user;
+  const userObj = user.toObject();
+  return { ...userObj, id: userObj._id.toString() } as UserResponse;
 };
 
-// Get All Users with pagination
-const getAllUsers = async (page = 1, limit = 10) => {
+// Get All Users with pagination and filtering
+const getAllUsers = async (page = 1, limit = 10, filters: UserFilter = {}) => {
   const skip = (page - 1) * limit;
-  const users = await User.find().skip(skip).limit(limit);
-  const totalUsers = await User.countDocuments();
+
+  // Build filter query
+  const query: any = {};
+  if (filters.role) query.role = filters.role;
+  if (filters.status) query.status = filters.status;
+  if (filters.search) {
+    query.$or = [
+      { name: { $regex: filters.search, $options: "i" } },
+      { email: { $regex: filters.search, $options: "i" } },
+      { phone: { $regex: filters.search, $options: "i" } },
+    ];
+  }
+
+  const users = await User.find(query)
+    .select("-password")
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+
+  const totalUsers = await User.countDocuments(query);
 
   return {
     data: users,
-    meta: { total: totalUsers, page, limit },
+    meta: {
+      total: totalUsers,
+      page,
+      limit,
+      totalPages: Math.ceil(totalUsers / limit),
+    },
   };
 };
 
-// Update User
+// Update User with ownership validation
 const updateUser = async (
   id: string,
   payload: Partial<IUser>,
-  decodedToken: JwtPayload
-): Promise<IUser | null> => {
+  requestingUser: JwtPayload
+): Promise<UserResponse | null> => {
   const existingUser = await User.findById(id);
   if (!existingUser) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  if (payload.role && decodedToken.role !== Role.ADMIN) {
-    throw new AppError(httpStatus.FORBIDDEN, "Only ADMIN can change roles");
+  const requestingUserId = requestingUser.id || requestingUser.userId;
+  // Check ownership or admin privileges
+  if (requestingUserId !== id && requestingUser.role !== Role.ADMIN) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can only update your own profile"
+    );
   }
 
-  if (payload.status && decodedToken.role !== Role.ADMIN) {
-    throw new AppError(httpStatus.FORBIDDEN, "Only ADMIN can change status");
+  // Only admin can change roles and status
+  if (payload.role && requestingUser.role !== Role.ADMIN) {
+    throw new AppError(httpStatus.FORBIDDEN, "Only admin can change roles");
   }
 
+  if (payload.status && requestingUser.role !== Role.ADMIN) {
+    throw new AppError(httpStatus.FORBIDDEN, "Only admin can change status");
+  }
+
+  // Hash password if provided
   if (payload.password) {
     payload.password = await bcryptjs.hash(
       payload.password,
@@ -80,19 +124,40 @@ const updateUser = async (
   const updatedUser = await User.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
-  });
+  }).select("-password");
 
-  return updatedUser;
+  if (!updatedUser) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  const updatedUserObj = updatedUser.toObject();
+  return {
+    ...updatedUserObj,
+    id: updatedUserObj._id.toString(),
+  } as UserResponse;
 };
 
-// Block/Unblock User
-const blockUser = async (id: string, block: boolean): Promise<IUser | null> => {
+// Block/Unblock User (Admin only)
+const blockUser = async (
+  id: string,
+  block: boolean
+): Promise<UserResponse | null> => {
   const user = await User.findById(id);
   if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
 
   user.status = block ? UserStatus.BLOCKED : UserStatus.ACTIVE;
   await user.save();
-  return user;
+
+  const userObj = user.toObject();
+  return { ...userObj, id: userObj._id.toString() } as UserResponse;
+};
+
+// Delete User (Admin only)
+const deleteUser = async (id: string): Promise<void> => {
+  const user = await User.findByIdAndDelete(id);
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
 };
 
 export const UserService = {
@@ -100,4 +165,5 @@ export const UserService = {
   getAllUsers,
   updateUser,
   blockUser,
+  deleteUser,
 };

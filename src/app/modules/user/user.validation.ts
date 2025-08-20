@@ -30,6 +30,8 @@ export const createUserZodSchema = z.object({
     })
     .optional(),
 
+  role: z.enum([Role.ADMIN, Role.SENDER, Role.RECEIVER]).default(Role.SENDER),
+
   address: z
     .object({
       street: z.string().optional(),
@@ -84,4 +86,10 @@ export const updateUserZodSchema = z.object({
       postalCode: z.string().optional(),
     })
     .optional(),
+});
+
+export const blockUserZodSchema = z.object({
+  block: z.boolean().refine((val) => typeof val === "boolean", {
+    message: "Block must be a boolean",
+  }),
 });

@@ -110,6 +110,39 @@ const updateParcelStatus = async (
   return parcel;
 };
 
+const confirmDelivery = async (
+  parcelId: string,
+  receiverId: string
+): Promise<IParcel | null> => {
+  const parcel = await Parcel.findById(parcelId);
+  if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+
+  if (!parcel.receiver || parcel.receiver.toString() !== receiverId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You are not the receiver of this parcel"
+    );
+  }
+
+  if (parcel.status !== ParcelStatus.IN_TRANSIT) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Parcel is not ready to be confirmed"
+    );
+  }
+
+  parcel.status = ParcelStatus.DELIVERED;
+  parcel.statusLogs.push({
+    status: ParcelStatus.DELIVERED,
+    updatedBy: new Types.ObjectId(receiverId),
+    timestamp: new Date(),
+    note: "Delivery confirmed by receiver",
+  });
+
+  await parcel.save();
+  return parcel;
+};
+
 const deleteParcel = async (parcelId: string): Promise<IParcel | null> => {
   return Parcel.findByIdAndDelete(parcelId);
 };
@@ -133,6 +166,7 @@ export const ParcelService = {
   getParcelsByReceiver,
   getParcelByTrackingId,
   updateParcelStatus,
+  confirmDelivery,
   deleteParcel,
   blockUnblockParcel,
 };

@@ -8,10 +8,11 @@ import { IUser, UserStatus } from "../modules/user/user.interface";
 
 export const createUserTokens = (user: Partial<IUser>) => {
   const jwtPayload = {
-    userId: user._id,
+    userId: user._id?.toString(),
     email: user.email,
     role: user.role,
   };
+
   const accessToken = generateToken(
     jwtPayload,
     envVariables.JWT_ACCESS_SECRET,
@@ -52,7 +53,7 @@ export const createNewAccessTokenWithRefreshToken = async (
   }
 
   const jwtPayload = {
-    userId: isUserExist._id,
+    userId: isUserExist._id.toString(),
     email: isUserExist.email,
     role: isUserExist.role,
   };
@@ -62,7 +63,5 @@ export const createNewAccessTokenWithRefreshToken = async (
     envVariables.JWT_ACCESS_EXPIRES
   );
 
-  return {
-    accessToken,
-  };
+  return { accessToken };
 };

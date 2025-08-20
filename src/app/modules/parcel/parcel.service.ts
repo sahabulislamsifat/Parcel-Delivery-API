@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Types } from "mongoose";
-import { DeliveryChargeService } from "../deliveryCharge/deliveryCharge.service";
-import { IParcel, ParcelStatus } from "./parcel.interface";
-import { Parcel } from "./parcel.model";
-import { QueryBuilder } from "../../utils/QueryBuilder";
+import { IParcel, ParcelFilter, ParcelStatus } from "./parcel.interface";
+import { User } from "../user/user.model";
 import AppError from "../../errorHelper/AppError";
 import httpStatus from "../../utils/httpStatus";
+import { DeliveryChargeService } from "../deliveryCharge/deliveryCharge.service";
+import { Parcel } from "./parcel.model";
+import { QueryBuilder } from "../../utils/QueryBuilder";
 
 // Generate unique trackingId
 const generateTrackingId = (): string => {
@@ -18,61 +20,206 @@ const VALID_STATUS_TRANSITIONS: Record<ParcelStatus, ParcelStatus[]> = {
   [ParcelStatus.REQUESTED]: [ParcelStatus.APPROVED, ParcelStatus.CANCELLED],
   [ParcelStatus.APPROVED]: [ParcelStatus.DISPATCHED, ParcelStatus.CANCELLED],
   [ParcelStatus.DISPATCHED]: [ParcelStatus.IN_TRANSIT, ParcelStatus.CANCELLED],
-  [ParcelStatus.IN_TRANSIT]: [ParcelStatus.DELIVERED, ParcelStatus.RETURNED],
+  [ParcelStatus.IN_TRANSIT]: [
+    ParcelStatus.OUT_FOR_DELIVERY,
+    ParcelStatus.RETURNED,
+  ],
+  [ParcelStatus.OUT_FOR_DELIVERY]: [
+    ParcelStatus.DELIVERED,
+    ParcelStatus.RETURNED,
+  ],
   [ParcelStatus.DELIVERED]: [],
   [ParcelStatus.CANCELLED]: [],
   [ParcelStatus.RETURNED]: [],
+  [ParcelStatus.BLOCKED]: [ParcelStatus.APPROVED],
 };
 
-const createParcel = async (payload: Partial<IParcel>): Promise<IParcel> => {
-  payload.trackingId = generateTrackingId();
-  payload.status = ParcelStatus.REQUESTED;
+// Calculate total amount
+const calculateTotalAmount = (
+  price: number,
+  deliveryCharge: number
+): number => {
+  return price + deliveryCharge;
+};
 
-  if (!payload.deliveryCharge) {
-    payload.deliveryCharge = await DeliveryChargeService.calculateFee(
-      payload.receiverAddress as string,
-      payload.type as string,
-      payload.weight as number
-    );
+const createParcel = async (
+  payload: Partial<IParcel>,
+  userId: string
+): Promise<IParcel> => {
+  const senderId = new Types.ObjectId(userId);
+
+  // Check if receiver exists
+  const receiver = await User.findById(payload.receiver);
+  if (!receiver) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Receiver not found");
   }
 
-  payload.statusLogs = [
-    {
-      status: ParcelStatus.REQUESTED,
-      updatedBy: payload.sender as Types.ObjectId,
-      timestamp: new Date(),
-    },
-  ];
+  // Calculate delivery charge
+  const deliveryCharge = await DeliveryChargeService.calculateFee(
+    payload.receiverAddress as string,
+    payload.type as string,
+    payload.weight as number
+  );
 
-  return Parcel.create(payload);
+  const totalAmount = calculateTotalAmount(payload.price || 0, deliveryCharge);
+
+  const parcelData: Partial<IParcel> = {
+    trackingId: generateTrackingId(),
+    status: ParcelStatus.REQUESTED,
+    sender: senderId,
+    deliveryCharge,
+    totalAmount,
+    statusLogs: [
+      {
+        status: ParcelStatus.REQUESTED,
+        updatedBy: senderId,
+        timestamp: new Date(),
+        note: "Parcel created by sender",
+      },
+    ],
+    ...payload,
+  };
+
+  return Parcel.create(parcelData);
 };
 
 const getAllParcels = async (
   query: Record<string, unknown>
-): Promise<IParcel[]> => {
+): Promise<{
+  data: IParcel[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}> => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+
   const parcelQuery = new QueryBuilder(
-    Parcel.find().populate("sender receiver"),
+    Parcel.find().populate("sender receiver", "name email phone"),
     query
   )
     .search(["trackingId", "type", "status"])
     .filter()
     .sort()
     .paginate();
-  return await parcelQuery.exec();
+
+  const [data, total] = await Promise.all([
+    parcelQuery.exec(),
+    Parcel.countDocuments((parcelQuery as any)._filter || {}),
+  ]);
+
+  return {
+    data,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
-const getParcelsBySender = async (senderId: string): Promise<IParcel[]> => {
-  return Parcel.find({ sender: senderId }).populate("receiver");
+const getParcelsBySender = async (
+  senderId: string,
+  query: Record<string, unknown>
+): Promise<{
+  data: IParcel[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}> => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+
+  const baseQuery = { sender: new Types.ObjectId(senderId) };
+  const parcelQuery = new QueryBuilder(
+    Parcel.find(baseQuery).populate("receiver", "name email phone"),
+    query
+  )
+    .search(["trackingId", "status"])
+    .filter()
+    .sort()
+    .paginate();
+
+  const [data, total] = await Promise.all([
+    parcelQuery.exec(),
+    Parcel.countDocuments(baseQuery),
+  ]);
+
+  return {
+    data,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
-const getParcelsByReceiver = async (receiverId: string): Promise<IParcel[]> => {
-  return Parcel.find({ receiver: receiverId }).populate("sender");
+const getParcelsByReceiver = async (
+  receiverId: string,
+  query: Record<string, unknown>
+): Promise<{
+  data: IParcel[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}> => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+
+  const baseQuery = { receiver: new Types.ObjectId(receiverId) };
+  const parcelQuery = new QueryBuilder(
+    Parcel.find(baseQuery).populate("sender", "name email phone"),
+    query
+  )
+    .search(["trackingId", "status"])
+    .filter()
+    .sort()
+    .paginate();
+  const [data, total] = await Promise.all([
+    parcelQuery.exec(),
+    Parcel.countDocuments({
+      ...baseQuery,
+      ...(parcelQuery as any).getFilter(),
+    }),
+  ]);
+
+  return {
+    data,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 const getParcelByTrackingId = async (
   trackingId: string
 ): Promise<IParcel | null> => {
-  return Parcel.findOne({ trackingId }).populate("sender receiver");
+  return Parcel.findOne({ trackingId })
+    .populate("sender", "name email phone address")
+    .populate("receiver", "name email phone address")
+    .populate("assignedDriver", "name email phone");
+};
+
+const getParcelById = async (id: string): Promise<IParcel | null> => {
+  return Parcel.findById(id)
+    .populate("sender", "name email phone address")
+    .populate("receiver", "name email phone address")
+    .populate("assignedDriver", "name email phone");
 };
 
 const updateParcelStatus = async (
@@ -87,6 +234,7 @@ const updateParcelStatus = async (
 
   const currentStatus = parcel.status;
   const allowedNextStatuses = VALID_STATUS_TRANSITIONS[currentStatus];
+
   if (!allowedNextStatuses.includes(status)) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -94,32 +242,252 @@ const updateParcelStatus = async (
     );
   }
 
-  parcel.status = status;
-  parcel.statusLogs.push({
+  const statusUpdate = {
     status,
     updatedBy,
     timestamp: new Date(),
     note,
     location,
-  });
-  await parcel.save();
-  return parcel;
+  };
+
+  const updateData: any = {
+    status,
+    $push: { statusLogs: statusUpdate },
+  };
+
+  // Set delivery date when delivered
+  if (status === ParcelStatus.DELIVERED) {
+    updateData.actualDeliveryDate = new Date();
+  }
+
+  return Parcel.findByIdAndUpdate(parcelId, updateData, {
+    new: true,
+    runValidators: true,
+  }).populate("sender receiver", "name email phone");
+};
+
+const cancelParcel = async (
+  parcelId: string,
+  userId: string
+): Promise<IParcel | null> => {
+  const parcel = await Parcel.findById(parcelId);
+  if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+
+  // Check ownership
+  if (!parcel.sender || parcel.sender.toString() !== userId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You can only cancel your own parcels"
+    );
+  }
+
+  // Check if parcel can be cancelled
+  const nonCancellableStatuses = [
+    ParcelStatus.DISPATCHED,
+    ParcelStatus.IN_TRANSIT,
+    ParcelStatus.OUT_FOR_DELIVERY,
+    ParcelStatus.DELIVERED,
+  ];
+
+  if (nonCancellableStatuses.includes(parcel.status)) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Cannot cancel parcel in ${parcel.status} status`
+    );
+  }
+
+  return updateParcelStatus(
+    parcelId,
+    ParcelStatus.CANCELLED,
+    new Types.ObjectId(userId),
+    "Parcel cancelled by sender"
+  );
+};
+
+const confirmDelivery = async (
+  parcelId: string,
+  receiverId: string
+): Promise<IParcel | null> => {
+  const parcel = await Parcel.findById(parcelId);
+  if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+
+  // Verify receiver
+  if (!parcel.receiver || parcel.receiver.toString() !== receiverId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You are not the receiver of this parcel"
+    );
+  }
+
+  if (parcel.status !== ParcelStatus.OUT_FOR_DELIVERY) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Parcel is not out for delivery"
+    );
+  }
+
+  return updateParcelStatus(
+    parcelId,
+    ParcelStatus.DELIVERED,
+    new Types.ObjectId(receiverId),
+    "Delivery confirmed by receiver"
+  );
 };
 
 const deleteParcel = async (parcelId: string): Promise<IParcel | null> => {
+  const parcel = await Parcel.findById(parcelId);
+  if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+
+  // Prevent deletion of parcels that are already in transit or delivered
+  const protectedStatuses = [
+    ParcelStatus.DISPATCHED,
+    ParcelStatus.IN_TRANSIT,
+    ParcelStatus.OUT_FOR_DELIVERY,
+    ParcelStatus.DELIVERED,
+  ];
+
+  if (protectedStatuses.includes(parcel.status)) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Cannot delete parcel in ${parcel.status} status`
+    );
+  }
+
   return Parcel.findByIdAndDelete(parcelId);
 };
 
 const blockUnblockParcel = async (
   parcelId: string,
-  block: boolean
+  block: boolean,
+  reason?: string
 ): Promise<IParcel | null> => {
   const parcel = await Parcel.findById(parcelId);
   if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
 
-  parcel.isBlocked = block;
-  await parcel.save();
-  return parcel;
+  const updateData: any = {
+    isBlocked: block,
+    $push: {
+      statusLogs: {
+        status: block ? ParcelStatus.BLOCKED : ParcelStatus.APPROVED,
+        updatedBy: new Types.ObjectId(), // System or admin ID
+        timestamp: new Date(),
+        note: reason || `Parcel ${block ? "blocked" : "unblocked"} by admin`,
+      },
+    },
+  };
+
+  if (block) {
+    updateData.status = ParcelStatus.BLOCKED;
+  } else {
+    // Unblock and return to previous approved status
+    updateData.status = ParcelStatus.APPROVED;
+  }
+
+  return Parcel.findByIdAndUpdate(parcelId, updateData, {
+    new: true,
+    runValidators: true,
+  }).populate("sender receiver", "name email phone");
+};
+
+const updatePaymentStatus = async (
+  parcelId: string,
+  isPaid: boolean,
+  paymentMethod?: string
+): Promise<IParcel | null> => {
+  return Parcel.findByIdAndUpdate(
+    parcelId,
+    {
+      isPaid,
+      paymentMethod,
+      $push: {
+        statusLogs: {
+          status: ParcelStatus.APPROVED, // Or keep current status
+          updatedBy: new Types.ObjectId(), // System or admin ID
+          timestamp: new Date(),
+          note: `Payment ${isPaid ? "completed" : "pending"}${
+            paymentMethod ? ` via ${paymentMethod}` : ""
+          }`,
+        },
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).populate("sender receiver", "name email phone");
+};
+
+const getParcelStatistics = async (): Promise<{
+  total: number;
+  delivered: number;
+  inTransit: number;
+  cancelled: number;
+  revenue: number;
+  pending: number;
+}> => {
+  const [total, delivered, inTransit, cancelled, pending, revenue] =
+    await Promise.all([
+      Parcel.countDocuments(),
+      Parcel.countDocuments({ status: ParcelStatus.DELIVERED }),
+      Parcel.countDocuments({
+        status: {
+          $in: [
+            ParcelStatus.IN_TRANSIT,
+            ParcelStatus.OUT_FOR_DELIVERY,
+            ParcelStatus.DISPATCHED,
+          ],
+        },
+      }),
+      Parcel.countDocuments({ status: ParcelStatus.CANCELLED }),
+      Parcel.countDocuments({ status: ParcelStatus.REQUESTED }),
+      Parcel.aggregate([
+        {
+          $match: {
+            status: ParcelStatus.DELIVERED,
+            isPaid: true,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$totalAmount" },
+          },
+        },
+      ]),
+    ]);
+
+  return {
+    total,
+    delivered,
+    inTransit,
+    cancelled,
+    pending,
+    revenue: revenue[0]?.total || 0,
+  };
+};
+
+const searchParcels = async (filters: ParcelFilter): Promise<IParcel[]> => {
+  const query: any = {};
+
+  if (filters.trackingId) {
+    query.trackingId = { $regex: filters.trackingId, $options: "i" };
+  }
+  if (filters.status) query.status = filters.status;
+  if (filters.type) query.type = filters.type;
+  if (filters.sender) query.sender = new Types.ObjectId(filters.sender);
+  if (filters.receiver) query.receiver = new Types.ObjectId(filters.receiver);
+
+  if (filters.dateFrom || filters.dateTo) {
+    query.createdAt = {};
+    if (filters.dateFrom) query.createdAt.$gte = new Date(filters.dateFrom);
+    if (filters.dateTo) query.createdAt.$lte = new Date(filters.dateTo);
+  }
+
+  return Parcel.find(query)
+    .populate("sender", "name email phone")
+    .populate("receiver", "name email phone")
+    .sort({ createdAt: -1 })
+    .limit(50); // Limit search results
 };
 
 export const ParcelService = {
@@ -128,7 +496,13 @@ export const ParcelService = {
   getParcelsBySender,
   getParcelsByReceiver,
   getParcelByTrackingId,
+  getParcelById,
   updateParcelStatus,
+  cancelParcel,
+  confirmDelivery,
   deleteParcel,
   blockUnblockParcel,
+  updatePaymentStatus,
+  getParcelStatistics,
+  searchParcels,
 };

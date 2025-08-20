@@ -1,14 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { NextFunction, Request, Response } from "express";
 import AppError from "../../errorHelper/AppError";
+import httpStatus from "../../utils/httpStatus";
 import { ParcelService } from "./parcel.service";
 import { sendResponse } from "../../utils/sendResponse";
-import httpStatus from "../../utils/httpStatus";
 import mongoose from "mongoose";
 
 const getUserId = (req: Request): string => {
-  if (!req.user?.userId)
-    throw new AppError(401, "Unauthorized: User not found");
-  return req.user.userId;
+  if (!req.user?.userId) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "User information not found");
+  }
+  return req.user.userId.toString();
 };
 
 const createParcel = async (
@@ -19,7 +22,8 @@ const createParcel = async (
   try {
     const senderId = getUserId(req);
     const payload = { ...req.body, sender: senderId };
-    const parcel = await ParcelService.createParcel(payload);
+
+    const parcel = await ParcelService.createParcel(payload, senderId);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.CREATED,
@@ -37,12 +41,37 @@ const getAllParcels = async (
   next: NextFunction
 ) => {
   try {
-    const parcels = await ParcelService.getAllParcels(req.query);
+    const result = await ParcelService.getAllParcels(req.query);
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: "All parcels retrieved",
-      data: parcels,
+      message: "Parcels retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getParcelById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const parcel = await ParcelService.getParcelById(id);
+
+    if (!parcel) {
+      throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+    }
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Parcel retrieved successfully",
+      data: parcel,
     });
   } catch (error) {
     next(error);
@@ -56,12 +85,14 @@ const getParcelsBySender = async (
 ) => {
   try {
     const senderId = getUserId(req);
-    const parcels = await ParcelService.getParcelsBySender(senderId);
+    const result = await ParcelService.getParcelsBySender(senderId, req.query);
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: "Sender parcels retrieved",
-      data: parcels,
+      message: "Sender parcels retrieved successfully",
+      data: result.data,
+      meta: result.meta,
     });
   } catch (error) {
     next(error);
@@ -75,12 +106,41 @@ const getParcelsByReceiver = async (
 ) => {
   try {
     const receiverId = getUserId(req);
-    const parcels = await ParcelService.getParcelsByReceiver(receiverId);
+    const result = await ParcelService.getParcelsByReceiver(
+      receiverId,
+      req.query
+    );
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: "Receiver parcels retrieved",
-      data: parcels,
+      message: "Receiver parcels retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getParcelByTrackingId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { trackingId } = req.params;
+    const parcel = await ParcelService.getParcelByTrackingId(trackingId);
+
+    if (!parcel) {
+      throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
+    }
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Parcel retrieved successfully",
+      data: parcel,
     });
   } catch (error) {
     next(error);
@@ -96,6 +156,7 @@ const updateParcelStatus = async (
     const { id } = req.params;
     const { status, note, location } = req.body;
     const updatedBy = new mongoose.Types.ObjectId(getUserId(req));
+
     const parcel = await ParcelService.updateParcelStatus(
       id,
       status,
@@ -103,10 +164,55 @@ const updateParcelStatus = async (
       note,
       location
     );
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: "Parcel status updated",
+      message: "Parcel status updated successfully",
+      data: parcel,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const cancelParcel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const senderId = getUserId(req);
+
+    const parcel = await ParcelService.cancelParcel(id, senderId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Parcel cancelled successfully",
+      data: parcel,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const confirmDelivery = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const receiverId = getUserId(req);
+
+    const parcel = await ParcelService.confirmDelivery(id, receiverId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Delivery confirmed successfully",
       data: parcel,
     });
   } catch (error) {
@@ -122,10 +228,11 @@ const deleteParcel = async (
   try {
     const { id } = req.params;
     const parcel = await ParcelService.deleteParcel(id);
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: "Parcel deleted",
+      message: "Parcel deleted successfully",
       data: parcel,
     });
   } catch (error) {
@@ -140,13 +247,79 @@ const blockUnblockParcel = async (
 ) => {
   try {
     const { id } = req.params;
-    const { block } = req.body;
-    const parcel = await ParcelService.blockUnblockParcel(id, block);
+    const { block, reason } = req.body;
+
+    const parcel = await ParcelService.blockUnblockParcel(id, block, reason);
+
     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
-      message: `Parcel ${block ? "blocked" : "unblocked"}`,
+      message: `Parcel ${block ? "blocked" : "unblocked"} successfully`,
       data: parcel,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatePaymentStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { isPaid, paymentMethod } = req.body;
+
+    const parcel = await ParcelService.updatePaymentStatus(
+      id,
+      isPaid,
+      paymentMethod
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: `Payment status updated to ${isPaid ? "paid" : "pending"}`,
+      data: parcel,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getStatistics = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const statistics = await ParcelService.getParcelStatistics();
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Parcel statistics retrieved successfully",
+      data: statistics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const searchParcels = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const parcels = await ParcelService.searchParcels(req.query as any);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Parcels search completed successfully",
+      data: parcels,
     });
   } catch (error) {
     next(error);
@@ -156,9 +329,16 @@ const blockUnblockParcel = async (
 export const ParcelController = {
   createParcel,
   getAllParcels,
+  getParcelById,
   getParcelsBySender,
   getParcelsByReceiver,
+  getParcelByTrackingId,
   updateParcelStatus,
+  cancelParcel,
+  confirmDelivery,
   deleteParcel,
   blockUnblockParcel,
+  updatePaymentStatus,
+  getStatistics,
+  searchParcels,
 };

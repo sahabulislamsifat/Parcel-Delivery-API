@@ -1,8 +1,9 @@
-import { Query } from "mongoose";
+import { Query, FilterQuery } from "mongoose";
 
 export class QueryBuilder<T> {
   public modelQuery: Query<T[], T>;
   public query: Record<string, unknown>;
+  private filterObj: FilterQuery<T> = {};
 
   constructor(modelQuery: Query<T[], T>, query: Record<string, unknown>) {
     this.modelQuery = modelQuery;
@@ -11,11 +12,13 @@ export class QueryBuilder<T> {
 
   search(fields: string[]) {
     if (this.query.search) {
-      this.modelQuery = this.modelQuery.find({
+      const searchFilter = {
         $or: fields.map((field) => ({
           [field]: { $regex: this.query.search as string, $options: "i" },
         })),
-      });
+      };
+      this.filterObj = { ...this.filterObj, ...searchFilter };
+      this.modelQuery = this.modelQuery.find(searchFilter);
     }
     return this;
   }
@@ -29,6 +32,7 @@ export class QueryBuilder<T> {
       return acc;
     }, {} as Record<string, unknown>);
 
+    this.filterObj = { ...this.filterObj, ...queryObj };
     this.modelQuery = this.modelQuery.find(queryObj);
     return this;
   }
@@ -47,6 +51,10 @@ export class QueryBuilder<T> {
 
     this.modelQuery = this.modelQuery.skip(skip).limit(limit);
     return this;
+  }
+
+  getFilter(): FilterQuery<T> {
+    return this.filterObj;
   }
 
   async exec() {

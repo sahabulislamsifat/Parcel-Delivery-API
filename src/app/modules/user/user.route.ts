@@ -1,32 +1,41 @@
-import { Router } from "express";
+import express from "express";
 import { validateRequest } from "../../middleware/validationRequest";
+import {
+  blockUserZodSchema,
+  createUserZodSchema,
+  updateUserZodSchema,
+} from "./user.validation";
+import { UserController } from "./user.controller";
 import { checkAuth } from "../../middleware/checkAuth";
 import { Role } from "./user.interface";
-import { createUserZodSchema, updateUserZodSchema } from "./user.validation";
-import { UserController } from "./user.controller";
+import { checkUserOwnershipOrAdmin } from "../../middleware/checkUserOwnershipOrAdmin";
 
-const router = Router();
+const router = express.Router();
 
+// Public routes
 router.post(
   "/register",
   validateRequest(createUserZodSchema),
   UserController.createUser
 );
 
+// Admin only routes
 router.get("/all-users", checkAuth(Role.ADMIN), UserController.getAllUsers);
-
-router.patch(
-  "/:id",
-  validateRequest(updateUserZodSchema),
-  checkAuth(...Object.values(Role)),
-  UserController.updateUser
-);
-
-// Block/Unblock endpoint (ADMIN only)
 router.patch(
   "/block/:id",
   checkAuth(Role.ADMIN),
+  validateRequest(blockUserZodSchema),
   UserController.blockUserController
+);
+router.delete("/delete/:id", checkAuth(Role.ADMIN), UserController.deleteUser);
+
+// Authenticated user routes (own profile or admin)
+router.patch(
+  "/:id",
+  validateRequest(updateUserZodSchema),
+  checkAuth(Role.ADMIN, Role.SENDER, Role.RECEIVER),
+  checkUserOwnershipOrAdmin,
+  UserController.updateUser
 );
 
 export const UserRoutes = router;

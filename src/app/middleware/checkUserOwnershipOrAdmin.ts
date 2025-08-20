@@ -3,7 +3,7 @@ import AppError from "../errorHelper/AppError";
 import httpStatus from "../utils/httpStatus";
 import { Role } from "../modules/user/user.interface";
 
-export const checkOwnershipOrAdmin = (
+export const checkUserOwnershipOrAdmin = (
   req: Request,
   res: Response,
   next: NextFunction

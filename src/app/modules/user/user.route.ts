@@ -1,16 +1,16 @@
-import { Router } from "express";
+import express from "express";
 import { validateRequest } from "../../middleware/validationRequest";
-import { checkAuth } from "../../middleware/checkAuth";
-import { Role } from "./user.interface";
 import {
+  blockUserZodSchema,
   createUserZodSchema,
   updateUserZodSchema,
-  blockUserZodSchema,
 } from "./user.validation";
 import { UserController } from "./user.controller";
-import { checkOwnershipOrAdmin } from "../../middleware/checkOwnership";
+import { checkAuth } from "../../middleware/checkAuth";
+import { Role } from "./user.interface";
+import { checkUserOwnershipOrAdmin } from "../../middleware/checkUserOwnershipOrAdmin";
 
-const router = Router();
+const router = express.Router();
 
 // Public routes
 router.post(
@@ -34,7 +34,7 @@ router.patch(
   "/:id",
   validateRequest(updateUserZodSchema),
   checkAuth(Role.ADMIN, Role.SENDER, Role.RECEIVER),
-  checkOwnershipOrAdmin,
+  checkUserOwnershipOrAdmin,
   UserController.updateUser
 );
 

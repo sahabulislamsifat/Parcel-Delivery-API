@@ -57,7 +57,6 @@ const parcelSchema = new Schema<IParcel>(
 );
 
 // Indexes for better performance
-parcelSchema.index({ trackingId: 1 });
 parcelSchema.index({ sender: 1 });
 parcelSchema.index({ receiver: 1 });
 parcelSchema.index({ status: 1 });

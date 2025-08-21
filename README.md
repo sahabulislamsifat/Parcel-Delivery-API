@@ -366,7 +366,7 @@ GitHub: @sahabulislamsifat
 
 Portfolio: sifat0.web.app
 
-🙏 Acknowledgments
+Acknowledgments :
 Inspired by Pathao Courier and Sundarban Courier services
 
 Built as part of Next Level Web Development assignment

@@ -12,14 +12,16 @@ import { checkUserOwnershipOrAdmin } from "../../middleware/checkUserOwnershipOr
 
 const router = express.Router();
 
-// Public routes
+// ✅ Public routes
 router.post(
   "/register",
   validateRequest(createUserZodSchema),
   UserController.createUser
 );
 
-// Admin only routes
+router.get("/me", checkAuth(...Object.values(Role)), UserController.getMe);
+
+// ✅ Admin routes FIRST (static)
 router.get("/all-users", checkAuth(Role.ADMIN), UserController.getAllUsers);
 router.patch(
   "/block/:id",
@@ -29,7 +31,13 @@ router.patch(
 );
 router.delete("/delete/:id", checkAuth(Role.ADMIN), UserController.deleteUser);
 
-// Authenticated user routes (own profile or admin)
+// ✅ Dynamic routes (last)
+router.get(
+  "/:id",
+  checkAuth(...Object.values(Role)),
+  UserController.getSingleUser
+);
+
 router.patch(
   "/:id",
   validateRequest(updateUserZodSchema),

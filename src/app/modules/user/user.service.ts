@@ -49,6 +49,22 @@ const createUser = async (payload: Partial<IUser>): Promise<UserResponse> => {
   return { ...userObj, id: userObj._id.toString() } as UserResponse;
 };
 
+const getSingleUser = async (id: string) => {
+  const user = await User.findById(id).select("-password");
+
+  return {
+    data: user,
+  };
+};
+
+const getMe = async (id: string) => {
+  const result = await User.findById(id).select("-password");
+
+  return {
+    data: result,
+  };
+};
+
 // Get All Users with pagination and filtering
 const getAllUsers = async (page = 1, limit = 10, filters: UserFilter = {}) => {
   const skip = (page - 1) * limit;
@@ -162,6 +178,8 @@ const deleteUser = async (id: string): Promise<void> => {
 
 export const UserService = {
   createUser,
+  getMe,
+  getSingleUser,
   getAllUsers,
   updateUser,
   blockUser,

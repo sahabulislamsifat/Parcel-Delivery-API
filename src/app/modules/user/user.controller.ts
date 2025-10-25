@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import httpStatus from "../../utils/httpStatus";
 import { UserService } from "./user.service";
 import { JwtPayload } from "jsonwebtoken";
 import { UserFilter } from "./user.interface";
+import { sendResponse } from "../../utils/sendResponse";
+import { catchAsync } from "../../utils/createAsync";
 
 // Create User
 const createUser = async (req: Request, res: Response) => {
@@ -21,6 +24,34 @@ const createUser = async (req: Request, res: Response) => {
     });
   }
 };
+
+const getSingleUser = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const id = req.params.id;
+    const result = await UserService.getSingleUser(id);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "User retrieved Successfully",
+      data: result.data,
+    });
+  }
+);
+
+const getMe = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const decodedToken = req.user as JwtPayload;
+    const result = await UserService.getMe(decodedToken.userId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.CREATED,
+      message: "Your profile Retrieved Successfully",
+      data: result.data,
+    });
+  }
+);
 
 // Get All Users
 const getAllUsers = async (req: Request, res: Response) => {
@@ -110,6 +141,8 @@ const deleteUser = async (req: Request, res: Response) => {
 
 export const UserController = {
   createUser,
+  getMe,
+  getSingleUser,
   getAllUsers,
   updateUser,
   blockUserController,

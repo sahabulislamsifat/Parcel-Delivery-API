@@ -9,10 +9,8 @@ export const setAuthCookie = (res: Response, tokenInfo: AuthToken) => {
   if (tokenInfo.accessToken) {
     res.cookie("accessToken", tokenInfo.accessToken, {
       httpOnly: true,
-      secure: true, // HTTPS only
       sameSite: "none", // allow cross-site
-      path: "/",
-      maxAge: 1000 * 60 * 15, // 15 min
+      secure: true, // HTTPS only
     });
   }
 
@@ -21,8 +19,6 @@ export const setAuthCookie = (res: Response, tokenInfo: AuthToken) => {
       httpOnly: true,
       sameSite: "none",
       secure: true,
-      path: "/",
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
     });
   }
 };

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { JwtPayload } from "jsonwebtoken";
-import { IUser, Role } from "../user/user.interface";
+import { Role } from "../user/user.interface";
 import { catchAsync } from "../../utils/createAsync";
 import { NextFunction, Request, Response } from "express";
 import passport from "passport";
@@ -108,17 +108,22 @@ const resetPassword = catchAsync(async (req: Request, res: Response) => {
 });
 
 const googleCallbackController = catchAsync(async (req, res) => {
-  const redirect = (req.query.state as string) || "";
-  const user = req.user as IUser;
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  let redirectTo = req.query.state ? (req.query.state as string) : "";
+  if (redirectTo.startsWith("/")) {
+    redirectTo = redirectTo.slice(1);
   }
 
-  const tokens = await createUserTokens(user);
-  setAuthCookie(res, tokens);
+  // /booking => booking , => "/" => ""
+  const user = req.user;
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User Not Found");
+  }
 
-  res.redirect(`${envVariables.FRONTEND_URL}/${redirect}`);
+  const tokenInfo = createUserTokens(user);
+
+  setAuthCookie(res, tokenInfo);
+
+  res.redirect(`${envVariables.FRONTEND_URL}/${redirectTo}`);
 });
 
 export const authControllers = {

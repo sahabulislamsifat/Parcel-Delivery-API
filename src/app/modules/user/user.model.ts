@@ -48,7 +48,7 @@ const userSchema = new Schema<IUser>(
     },
     phone: {
       type: String,
-      unique: true,
+      unique: false,
       sparse: true,
       match: [
         /^(?:\+8801\d{9}|01\d{9})$/,

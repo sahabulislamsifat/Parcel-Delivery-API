@@ -69,10 +69,11 @@ passport.use(
         if (!email) {
           return done(null, false, { message: "Email not found..." });
         }
-        let user = await User.findOne({ email });
 
-        if (!user) {
-          user = await User.create({
+        let isUserExist = await User.findOne({ email });
+
+        if (!isUserExist) {
+          isUserExist = await User.create({
             email,
             name: profile.displayName,
             picture: profile.photos?.[0].value,
@@ -86,7 +87,7 @@ passport.use(
             ],
           });
         }
-        return done(null, user);
+        return done(null, isUserExist);
       } catch (error) {
         console.log("Google Strategy Error:", error);
         done(error);

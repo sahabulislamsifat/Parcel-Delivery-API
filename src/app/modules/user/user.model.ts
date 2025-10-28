@@ -90,7 +90,6 @@ const userSchema = new Schema<IUser>(
 // 📍 Indexes
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ createdAt: -1 });
-userSchema.index({ phone: 1 }, { sparse: true }); // ✅ non-unique sparse index (important!)
 
 // 📍 Export Model
 export const User = model<IUser>("User", userSchema);

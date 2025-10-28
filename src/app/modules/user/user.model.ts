@@ -1,7 +1,7 @@
 import { model, Schema } from "mongoose";
 import { AuthProviderType, IUser, Role, UserStatus } from "./user.interface";
 
-// subSchema for address
+// 📍 Address Subschema
 const addressSchema = new Schema(
   {
     street: { type: String, trim: true },
@@ -12,7 +12,7 @@ const addressSchema = new Schema(
   { _id: false }
 );
 
-// subSchema for authProviders
+// 📍 Auth Provider Subschema
 const authProviderSchema = new Schema(
   {
     provider: {
@@ -26,7 +26,7 @@ const authProviderSchema = new Schema(
   { _id: false }
 );
 
-// Main User Schema
+// 📍 Main User Schema
 const userSchema = new Schema<IUser>(
   {
     name: {
@@ -48,8 +48,7 @@ const userSchema = new Schema<IUser>(
     },
     phone: {
       type: String,
-      unique: false,
-      sparse: true,
+      sparse: true, // ✅ allows multiple nulls
       match: [
         /^(?:\+8801\d{9}|01\d{9})$/,
         "Please enter a valid Bangladeshi phone number",
@@ -58,6 +57,7 @@ const userSchema = new Schema<IUser>(
     password: {
       type: String,
       required: function () {
+        // ✅ only required if no external auth provider
         return !(this as IUser).authProviders?.length;
       },
       select: false,
@@ -82,16 +82,15 @@ const userSchema = new Schema<IUser>(
   },
   {
     timestamps: true,
-    toJSON: {
-      virtuals: true,
-    },
-    toObject: {
-      virtuals: true,
-    },
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
+// 📍 Indexes
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ createdAt: -1 });
+userSchema.index({ phone: 1 }, { sparse: true }); // ✅ non-unique sparse index (important!)
 
+// 📍 Export Model
 export const User = model<IUser>("User", userSchema);

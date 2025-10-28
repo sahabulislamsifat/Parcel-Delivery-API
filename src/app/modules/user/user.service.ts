@@ -16,7 +16,14 @@ import bcryptjs from "bcryptjs";
 
 // Create User
 const createUser = async (payload: Partial<IUser>): Promise<UserResponse> => {
-  const { email, password, role = Role.SENDER, ...rest } = payload;
+  const {
+    email,
+    picture,
+    phone,
+    password,
+    role = Role.SENDER,
+    ...rest
+  } = payload;
 
   const isUserExist = await User.findOne({ email });
   if (isUserExist) {
@@ -41,6 +48,8 @@ const createUser = async (payload: Partial<IUser>): Promise<UserResponse> => {
     email,
     password: hashedPassword,
     role,
+    phone,
+    picture,
     authProviders: [authProvider],
     ...rest,
   });

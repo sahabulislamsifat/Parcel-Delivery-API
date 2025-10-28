@@ -33,6 +33,7 @@ export interface IUser {
   name: string;
   email: string;
   phone?: string;
+  picture?: string;
   password?: string;
   role: Role;
   authProviders?: IAuthProvider[];

@@ -9,6 +9,8 @@ export const createUserZodSchema = z.object({
 
   email: z.string().email({ message: "Invalid email address" }),
 
+  picture: z.string({ message: "Please input valid Picture URL" }).optional(),
+
   password: z
     .string()
     .min(8, { message: "Password must be at least 8 characters long" })
@@ -50,6 +52,7 @@ export const updateUserZodSchema = z.object({
     .optional(),
 
   email: z.string().email({ message: "Invalid email address" }).optional(),
+  photo: z.string({ message: "Please Input valid image url" }).optional(),
 
   password: z
     .string()

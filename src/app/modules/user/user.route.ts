@@ -21,6 +21,13 @@ router.post(
 
 router.get("/me", checkAuth(...Object.values(Role)), UserController.getMe);
 
+// Sender routes for create parcel fetching receiver data
+router.get(
+  "/all-receivers",
+  checkAuth(Role.SENDER),
+  UserController.getAllReceivers
+);
+
 // Admin routes FIRST (static)
 router.get("/all-users", checkAuth(Role.ADMIN), UserController.getAllUsers);
 router.patch(

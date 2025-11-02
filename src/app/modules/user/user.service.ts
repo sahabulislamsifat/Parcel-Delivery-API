@@ -74,6 +74,45 @@ const getMe = async (id: string) => {
   };
 };
 
+// Get All receivers for create parcel in sender dashboard
+const getAllReceivers = async (
+  page = 1,
+  limit = 10,
+  filters: UserFilter = {}
+) => {
+  const skip = (page - 1) * limit;
+
+  // Build filter query
+  const query: any = {};
+  if (filters.role) query.role = filters.role;
+  if (filters.status) query.status = filters.status;
+  if (filters.search) {
+    query.$or = [
+      { name: { $regex: filters.search, $options: "i" } },
+      { email: { $regex: filters.search, $options: "i" } },
+      { phone: { $regex: filters.search, $options: "i" } },
+    ];
+  }
+
+  const receivers = await User.find(query)
+    .select("-password")
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+
+  const totalUsers = await User.countDocuments(query);
+
+  return {
+    data: receivers,
+    meta: {
+      total: totalUsers,
+      page,
+      limit,
+      totalPages: Math.ceil(totalUsers / limit),
+    },
+  };
+};
+
 // Get All Users with pagination and filtering
 const getAllUsers = async (page = 1, limit = 10, filters: UserFilter = {}) => {
   const skip = (page - 1) * limit;
@@ -189,6 +228,7 @@ export const UserService = {
   createUser,
   getMe,
   getSingleUser,
+  getAllReceivers,
   getAllUsers,
   updateUser,
   blockUser,

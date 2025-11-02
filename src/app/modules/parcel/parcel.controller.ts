@@ -6,6 +6,7 @@ import httpStatus from "../../utils/httpStatus";
 import { ParcelService } from "./parcel.service";
 import { sendResponse } from "../../utils/sendResponse";
 import mongoose from "mongoose";
+import { ParcelStatus } from "./parcel.interface";
 
 const getUserId = (req: Request): string => {
   if (!req.user?.userId) {
@@ -220,6 +221,50 @@ const confirmDelivery = async (
   }
 };
 
+const getDeliveredParcels = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const receiverId = getUserId(req);
+    const result = await ParcelService.getParcelsByReceiver(receiverId, {
+      ...req.query,
+      status: ParcelStatus.DELIVERED,
+    });
+
+    sendResponse(res, {
+      success: true,
+      statusCode: 200,
+      message: "Delivered parcels retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getReceiverStatistics = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const receiverId = getUserId(req);
+    const statistics = await ParcelService.getReceiverStatistics(receiverId);
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Receiver statistics retrieved successfully",
+      data: statistics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteParcel = async (
   req: Request,
   res: Response,
@@ -329,6 +374,8 @@ const searchParcels = async (
 export const ParcelController = {
   createParcel,
   getAllParcels,
+  getDeliveredParcels,
+  getReceiverStatistics,
   getParcelById,
   getParcelsBySender,
   getParcelsByReceiver,

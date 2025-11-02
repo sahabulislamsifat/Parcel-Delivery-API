@@ -53,6 +53,33 @@ const getMe = catchAsync(
   }
 );
 
+// Get All Receivers for create parcel from sender dashboard
+const getAllReceivers = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const filters: UserFilter = {
+      role: req.query.role as any,
+      status: req.query.status as any,
+      search: req.query.search as string,
+    };
+
+    const result = await UserService.getAllReceivers(page, limit, filters);
+    res.status(httpStatus.OK).json({
+      success: true,
+      message: "Receivers retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "Failed to retrieve users",
+    });
+  }
+};
+
 // Get All Users
 const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -142,6 +169,7 @@ const deleteUser = async (req: Request, res: Response) => {
 export const UserController = {
   createUser,
   getMe,
+  getAllReceivers,
   getSingleUser,
   getAllUsers,
   updateUser,

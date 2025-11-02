@@ -206,6 +206,59 @@ const getParcelsByReceiver = async (
   };
 };
 
+const getReceiverStatistics = async (
+  receiverId: string
+): Promise<{
+  total: number;
+  delivered: number;
+  pending: number;
+  cancelled: number;
+  revenue: number;
+}> => {
+  const baseFilter = { receiver: new Types.ObjectId(receiverId) };
+
+  const [total, delivered, pending, cancelled, revenue] = await Promise.all([
+    Parcel.countDocuments(baseFilter),
+    Parcel.countDocuments({ ...baseFilter, status: ParcelStatus.DELIVERED }),
+    Parcel.countDocuments({
+      ...baseFilter,
+      status: {
+        $in: [
+          ParcelStatus.REQUESTED,
+          ParcelStatus.APPROVED,
+          ParcelStatus.DISPATCHED,
+          ParcelStatus.IN_TRANSIT,
+          ParcelStatus.OUT_FOR_DELIVERY,
+        ],
+      },
+    }),
+    Parcel.countDocuments({ ...baseFilter, status: ParcelStatus.CANCELLED }),
+    Parcel.aggregate([
+      {
+        $match: {
+          receiver: new Types.ObjectId(receiverId),
+          status: ParcelStatus.DELIVERED,
+          isPaid: true,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$totalAmount" },
+        },
+      },
+    ]),
+  ]);
+
+  return {
+    total,
+    delivered,
+    pending,
+    cancelled,
+    revenue: revenue[0]?.total || 0,
+  };
+};
+
 const getParcelByTrackingId = async (
   trackingId: string
 ): Promise<IParcel | null> => {
@@ -442,12 +495,6 @@ const getParcelStatistics = async (): Promise<{
       Parcel.countDocuments({ status: ParcelStatus.REQUESTED }),
       Parcel.aggregate([
         {
-          $match: {
-            status: ParcelStatus.DELIVERED,
-            isPaid: true,
-          },
-        },
-        {
           $group: {
             _id: null,
             total: { $sum: "$totalAmount" },
@@ -495,6 +542,7 @@ export const ParcelService = {
   getAllParcels,
   getParcelsBySender,
   getParcelsByReceiver,
+  getReceiverStatistics,
   getParcelByTrackingId,
   getParcelById,
   updateParcelStatus,

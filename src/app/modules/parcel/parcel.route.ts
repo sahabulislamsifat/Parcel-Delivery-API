@@ -35,12 +35,24 @@ router.get(
   checkAuth(Role.RECEIVER),
   ParcelController.getParcelsByReceiver
 );
+// Delivered parcels for sender
+router.get(
+  "/delivered",
+  checkAuth(Role.RECEIVER), // or ADMIN if admin view
+  ParcelController.getDeliveredParcels
+);
 
 router.patch(
   "/confirm-delivery/:id",
   checkAuth(Role.RECEIVER),
   checkParcelOwnershipOrAdmin,
   ParcelController.confirmDelivery
+);
+// Receiver statistics
+router.get(
+  "/receiver-statistics",
+  checkAuth(Role.RECEIVER),
+  ParcelController.getReceiverStatistics
 );
 
 // Admin routes

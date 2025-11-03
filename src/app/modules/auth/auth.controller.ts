@@ -73,16 +73,15 @@ const getNewAccessToken = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logout = catchAsync(async (_req: Request, res: Response) => {
-  const isProd = envVariables.NODE_ENV === "production";
   res.clearCookie("accessToken", {
     httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
   });
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: isProd,
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
   });
 
   sendResponse(res, {

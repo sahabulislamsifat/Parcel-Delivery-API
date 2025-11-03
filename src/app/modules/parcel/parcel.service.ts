@@ -262,7 +262,9 @@ const getReceiverStatistics = async (
 const getParcelByTrackingId = async (
   trackingId: string
 ): Promise<IParcel | null> => {
-  return Parcel.findOne({ trackingId })
+  return Parcel.findOne({
+    trackingId: { $regex: `^${trackingId}$`, $options: "i" },
+  })
     .populate("sender", "name email phone address")
     .populate("receiver", "name email phone address")
     .populate("assignedDriver", "name email phone");

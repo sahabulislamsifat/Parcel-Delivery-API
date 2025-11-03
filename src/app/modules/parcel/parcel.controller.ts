@@ -131,6 +131,8 @@ const getParcelByTrackingId = async (
 ) => {
   try {
     const { trackingId } = req.params;
+    // console.log(trackingId);
+
     const parcel = await ParcelService.getParcelByTrackingId(trackingId);
 
     if (!parcel) {

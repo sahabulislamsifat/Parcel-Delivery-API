@@ -46,7 +46,7 @@ const getMe = catchAsync(
 
     sendResponse(res, {
       success: true,
-      statusCode: httpStatus.CREATED,
+      statusCode: httpStatus.OK,
       message: "Your profile Retrieved Successfully",
       data: result.data,
     });
@@ -136,10 +136,13 @@ const blockUserController = async (req: Request, res: Response) => {
     const { block } = req.body;
 
     const result = await UserService.blockUser(id, block);
+    if (!result) {
+      throw new Error("Failed to block/unblock user");
+    }
     res.status(httpStatus.OK).json({
       success: true,
       message: `User ${block ? "blocked" : "unblocked"} successfully`,
-      data: result,
+      data: { id: result.id, status: result.status },
     });
   } catch (error: any) {
     res.status(error.statusCode || httpStatus.INTERNAL_SERVER_ERROR).json({

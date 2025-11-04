@@ -25,12 +25,22 @@ const createUser = async (payload: Partial<IUser>): Promise<UserResponse> => {
     ...rest
   } = payload;
 
-  const isUserExist = await User.findOne({ email });
+  const emailLower = email?.toLowerCase();
+  const isUserExist = await User.findOne({ email: emailLower });
+
   if (isUserExist) {
     throw new AppError(httpStatus.BAD_REQUEST, "User already exists!");
   }
 
   let hashedPassword: string | undefined;
+
+  if (!payload.authProviders?.length && !password) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Password is required for credential-based registration"
+    );
+  }
+
   if (password) {
     hashedPassword = await bcryptjs.hash(
       password,
@@ -160,11 +170,24 @@ const updateUser = async (
   }
 
   const requestingUserId = requestingUser.id || requestingUser.userId;
+
   // Check ownership or admin privileges
   if (requestingUserId !== id && requestingUser.role !== Role.ADMIN) {
     throw new AppError(
       httpStatus.FORBIDDEN,
       "You can only update your own profile"
+    );
+  }
+
+  if (
+    requestingUser.role === Role.ADMIN &&
+    requestingUserId === id &&
+    payload.role &&
+    payload.role !== Role.ADMIN
+  ) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Admin cannot demote their own role"
     );
   }
 
@@ -218,10 +241,11 @@ const blockUser = async (
 
 // Delete User (Admin only)
 const deleteUser = async (id: string): Promise<void> => {
-  const user = await User.findByIdAndDelete(id);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
+  const user = await User.findById(id);
+  if (!user) throw new AppError(httpStatus.NOT_FOUND, "User not found");
+
+  user.status = UserStatus.INACTIVE;
+  await user.save();
 };
 
 export const UserService = {

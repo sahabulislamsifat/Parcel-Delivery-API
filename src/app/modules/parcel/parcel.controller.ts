@@ -179,6 +179,33 @@ const updateParcelStatus = async (
   }
 };
 
+const assignDriver = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const parcelId = req.params.id;
+    const driverId = req.body.driverId;
+    const adminId = getUserId(req);
+
+    const parcel = await ParcelService.assignDriver(
+      parcelId,
+      driverId,
+      adminId
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Driver assigned successfully",
+      data: parcel,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const cancelParcel = async (
   req: Request,
   res: Response,
@@ -383,6 +410,7 @@ export const ParcelController = {
   getParcelsByReceiver,
   getParcelByTrackingId,
   updateParcelStatus,
+  assignDriver,
   cancelParcel,
   confirmDelivery,
   deleteParcel,

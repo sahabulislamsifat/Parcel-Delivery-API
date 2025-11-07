@@ -34,30 +34,32 @@ export interface IParcel {
   trackingId: string;
   type: ParcelType;
   weight: number;
-  price: number;
-  deliveryCharge: number;
-  totalAmount: number;
   sender: Types.ObjectId | IUser["_id"];
   receiver: Types.ObjectId | IUser["_id"];
   senderAddress: string;
   receiverAddress: string;
+  price: number;
+  deliveryCharge: number;
+  isPaid: boolean;
+  paymentMethod?: string;
+  totalAmount: number;
   deliveryDate?: Date;
+  actualDeliveryDate?: Date;
   status: ParcelStatus;
   statusLogs: IParcelStatusLog[];
   isBlocked?: boolean;
-  isPaid: boolean;
-  paymentMethod?: string;
+  isDeleted?: boolean;
   assignedDriver?: Types.ObjectId | IUser["_id"];
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface ParcelFilter {
+  trackingId?: string;
   status?: ParcelStatus;
   type?: ParcelType;
   sender?: string;
   receiver?: string;
-  trackingId?: string;
   dateFrom?: string;
   dateTo?: string;
 }

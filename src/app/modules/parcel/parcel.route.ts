@@ -91,6 +91,13 @@ router.patch(
   ParcelController.updatePaymentStatus
 );
 
+router.patch(
+  "/assign-driver/:id",
+  checkAuth(Role.ADMIN),
+  validateRequest(ParcelValidation.assignDriverValidationSchema),
+  ParcelController.assignDriver
+);
+
 router.delete("/:id", checkAuth(Role.ADMIN), ParcelController.deleteParcel);
 
 // Public routes

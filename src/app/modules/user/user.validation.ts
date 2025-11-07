@@ -26,11 +26,9 @@ export const createUserZodSchema = z.object({
 
   phone: z
     .string()
-    .regex(/^(?:\+8801\d{9}|01\d{9})$/, {
-      message:
-        "Phone number must be valid for Bangladesh (e.g., +8801XXXXXXXXX or 01XXXXXXXXX)",
-    })
-    .optional(),
+    .regex(/^(?:\+8801\d{9}|01\d{9})$/, { message: "Invalid phone number" })
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
 
   role: z.enum([Role.ADMIN, Role.SENDER, Role.RECEIVER]).default(Role.SENDER),
 

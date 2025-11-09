@@ -249,6 +249,11 @@ const updateParcelStatus = async (
   const parcel = await Parcel.findById(parcelId);
   if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
 
+  // prevent same-status update error
+  if (parcel.status === status) {
+    return parcel.populate("sender receiver", "name email phone");
+  }
+
   const allowedNextStatuses = VALID_STATUS_TRANSITIONS[parcel.status];
   if (!allowedNextStatuses.includes(status)) {
     throw new AppError(
@@ -266,15 +271,15 @@ const updateParcelStatus = async (
     location,
   });
 
-  if (status === ParcelStatus.DELIVERED) parcel.actualDeliveryDate = new Date();
+  if (status === ParcelStatus.DELIVERED) {
+    parcel.actualDeliveryDate = new Date();
+  }
 
   await parcel.save();
   return parcel.populate("sender receiver", "name email phone");
 };
 
-// ----------------------
-// 🧑‍💼 ADMIN UPDATE STATUS (REUSES GENERIC LOGIC)
-// ----------------------
+// ADMIN UPDATE STATUS (REUSES GENERIC LOGIC)
 const adminUpdateStatus = async (
   parcelId: string,
   status: ParcelStatus,
@@ -290,7 +295,7 @@ const adminUpdateStatus = async (
   );
 };
 
-//------CANCEL
+// CANCEL
 const cancelParcel = async (
   parcelId: string,
   senderId: string
@@ -334,7 +339,8 @@ const cancelParcel = async (
 //------CONFIRM DELIVERY
 const confirmDelivery = async (
   parcelId: string,
-  receiverId: string
+  receiverId: string,
+  action: "DELIVERED" | "RETURNED" = "DELIVERED"
 ): Promise<IParcel | null> => {
   const parcel = await Parcel.findById(parcelId);
   if (!parcel) throw new AppError(httpStatus.NOT_FOUND, "Parcel not found");
@@ -358,7 +364,16 @@ const confirmDelivery = async (
     );
   }
 
-  parcel.status = ParcelStatus.DELIVERED;
+  // parcel.status = ParcelStatus.DELIVERED;
+  if (action === "DELIVERED") {
+    parcel.status = ParcelStatus.DELIVERED;
+    parcel.actualDeliveryDate = new Date();
+  } else if (action === "RETURNED") {
+    parcel.status = ParcelStatus.RETURNED;
+  } else {
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid action type");
+  }
+
   parcel.statusLogs.push({
     status: ParcelStatus.DELIVERED,
     updatedBy: new Types.ObjectId(receiverId),
@@ -376,41 +391,48 @@ const getReceiverStatistics = async (
   pending: number;
   cancelled: number;
   revenue: number;
+  recentParcels: IParcel[];
 }> => {
   const baseFilter = { receiver: new Types.ObjectId(receiverId) };
 
-  const [total, delivered, pending, cancelled, revenue] = await Promise.all([
-    Parcel.countDocuments(baseFilter),
-    Parcel.countDocuments({ ...baseFilter, status: ParcelStatus.DELIVERED }),
-    Parcel.countDocuments({
-      ...baseFilter,
-      status: {
-        $in: [
-          ParcelStatus.REQUESTED,
-          ParcelStatus.APPROVED,
-          ParcelStatus.DISPATCHED,
-          ParcelStatus.IN_TRANSIT,
-          ParcelStatus.OUT_FOR_DELIVERY,
-        ],
-      },
-    }),
-    Parcel.countDocuments({ ...baseFilter, status: ParcelStatus.CANCELLED }),
-    Parcel.aggregate([
-      {
-        $match: {
-          receiver: new Types.ObjectId(receiverId),
-          status: ParcelStatus.DELIVERED,
-          isPaid: true,
+  const [total, delivered, pending, cancelled, revenue, recentParcels] =
+    await Promise.all([
+      Parcel.countDocuments(baseFilter),
+      Parcel.countDocuments({ ...baseFilter, status: ParcelStatus.DELIVERED }),
+      Parcel.countDocuments({
+        ...baseFilter,
+        status: {
+          $in: [
+            ParcelStatus.REQUESTED,
+            ParcelStatus.APPROVED,
+            ParcelStatus.DISPATCHED,
+            ParcelStatus.IN_TRANSIT,
+            ParcelStatus.OUT_FOR_DELIVERY,
+          ],
         },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$totalAmount" },
+      }),
+      Parcel.countDocuments({ ...baseFilter, status: ParcelStatus.CANCELLED }),
+      Parcel.aggregate([
+        {
+          $match: {
+            receiver: new Types.ObjectId(receiverId),
+            status: ParcelStatus.DELIVERED,
+            isPaid: true,
+          },
         },
-      },
-    ]),
-  ]);
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$totalAmount" },
+          },
+        },
+      ]),
+      Parcel.find(baseFilter)
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate("sender", "name email phone")
+        .populate("receiver", "name email phone"),
+    ]);
 
   return {
     total,
@@ -418,6 +440,7 @@ const getReceiverStatistics = async (
     pending,
     cancelled,
     revenue: revenue[0]?.total || 0,
+    recentParcels,
   };
 };
 

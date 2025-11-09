@@ -117,6 +117,5 @@ parcelSchema.index({ receiver: 1 });
 parcelSchema.index({ status: 1 });
 parcelSchema.index({ createdAt: -1 });
 parcelSchema.index({ isBlocked: 1 });
-// parcelSchema.index({ trackingId: 1 });
 
 export const Parcel = model<IParcel>("Parcel", parcelSchema);

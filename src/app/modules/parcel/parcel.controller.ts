@@ -159,6 +159,7 @@ const updateParcelStatus = async (
     const { id } = req.params;
     const { status, note, location } = req.body;
     const updatedBy = new mongoose.Types.ObjectId(getUserId(req));
+    // console.log(status);
 
     const parcel = await ParcelService.updateParcelStatus(
       id,
@@ -235,9 +236,10 @@ const confirmDelivery = async (
 ) => {
   try {
     const { id } = req.params;
+    const { action } = req.body;
     const receiverId = getUserId(req);
 
-    const parcel = await ParcelService.confirmDelivery(id, receiverId);
+    const parcel = await ParcelService.confirmDelivery(id, receiverId, action);
 
     sendResponse(res, {
       success: true,

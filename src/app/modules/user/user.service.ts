@@ -127,8 +127,10 @@ const getAllReceivers = async (
 const getAllUsers = async (page = 1, limit = 10, filters: UserFilter = {}) => {
   const skip = (page - 1) * limit;
 
-  // Build filter query
-  const query: any = {};
+  const query: any = {
+    role: { $ne: Role.ADMIN }, // Exclude admin users
+  };
+
   if (filters.role) query.role = filters.role;
   if (filters.status) query.status = filters.status;
   if (filters.search) {
